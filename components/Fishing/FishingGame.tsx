@@ -121,21 +121,21 @@ export function FishingGame() {
   }, [])
 
   return (
-    <div className="relative w-full h-[600px] rounded-xl overflow-hidden shadow-2xl border border-[#0A5CDD]/50 bg-black">
+    <div className="relative w-full aspect-[3/5] max-h-[600px] rounded-xl overflow-hidden shadow-2xl border border-[#0A5CDD]/50 bg-black">
       {/* Background Image */}
       {/* Background Image */}
       <OceanBackground />
 
       {/* UI Overlay */}
-      <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start">
-        <div className="bg-black/60 backdrop-blur-md p-3 rounded-lg border border-[#0A5CDD]/30">
-          <p className="text-[#A3B3C2] text-xs uppercase tracking-wider">Score</p>
-          <p className="text-2xl font-bold text-white font-mono">{score}</p>
+      <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start text-xs md:text-sm">
+        <div className="bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#0A5CDD]/30">
+          <p className="text-[#A3B3C2] text-[10px] md:text-xs uppercase tracking-wider">Score</p>
+          <p className="text-xl md:text-2xl font-bold text-white font-mono">{score}</p>
         </div>
         {lastCatch && (
-          <div className="animate-fade-in-down bg-black/60 backdrop-blur-md p-3 rounded-lg border border-[#F472B6]/30">
-            <p className="text-xs uppercase tracking-wider text-right" style={{ color: lastCatch.color }}>{lastCatch.rarity}</p>
-            <p className="text-lg font-bold text-white">{lastCatch.name}</p>
+          <div className="animate-fade-in-down bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#F472B6]/30">
+            <p className="text-[10px] md:text-xs uppercase tracking-wider text-right" style={{ color: lastCatch.color }}>{lastCatch.rarity}</p>
+            <p className="text-base md:text-lg font-bold text-white">{lastCatch.name}</p>
           </div>
         )}
       </div>
@@ -151,7 +151,7 @@ export function FishingGame() {
         {/* Fishing Line/Bobber Area */}
         <div className="relative h-64 w-full pointer-events-none z-10">
           {/* Rod Visual (Bottom Right) */}
-          <div className={`absolute bottom-[-20px] right-[-40px] w-48 h-48 transition-transform duration-500 origin-bottom-right z-20 ${gameState === 'casting' ? 'rotate-[-45deg]' : gameState === 'reeling' ? 'rotate-[10deg]' : 'rotate-0'}`}>
+          <div className={`absolute bottom-[-20px] right-[-40px] w-32 h-32 md:w-48 md:h-48 transition-transform duration-500 origin-bottom-right z-20 ${gameState === 'casting' ? 'rotate-[-45deg]' : gameState === 'reeling' ? 'rotate-[10deg]' : 'rotate-0'}`}>
             <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-xl">
               {/* Rod Handle */}
               <path d="M180,180 L140,140" stroke="#333" strokeWidth="12" strokeLinecap="round" />
@@ -201,17 +201,17 @@ export function FishingGame() {
 
             {/* Caught Visual Overlay */}
             {gameState === 'caught' && lastCatch && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce-in z-50 w-full">
-                <div className="text-8xl filter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)] mb-4 animate-bounce">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce-in z-50 w-full px-4 text-center">
+                <div className="text-6xl md:text-8xl filter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)] mb-4 animate-bounce">
                   {lastCatch.rarity === 'Trash' ? '👢' : '🐟'}
                 </div>
                 <div
-                  className="px-6 py-3 rounded-2xl backdrop-blur-md border border-white/20 text-white font-bold text-xl shadow-xl flex flex-col items-center gap-1"
+                  className="px-4 py-2 md:px-6 md:py-3 rounded-2xl backdrop-blur-md border border-white/20 text-white font-bold shadow-xl flex flex-col items-center gap-1 w-full max-w-[200px]"
                   style={{ background: `linear-gradient(135deg, rgba(0,0,0,0.8), ${lastCatch.color}40)` }}
                 >
-                  <span className="text-sm uppercase tracking-widest opacity-80">{lastCatch.rarity}</span>
-                  <span className="text-2xl" style={{ color: lastCatch.color }}>{lastCatch.name}</span>
-                  <span className="text-amber-400 font-mono text-sm">+{lastCatch.points} XP</span>
+                  <span className="text-[10px] md:text-sm uppercase tracking-widest opacity-80">{lastCatch.rarity}</span>
+                  <span className="text-lg md:text-2xl break-words leading-tight" style={{ color: lastCatch.color }}>{lastCatch.name}</span>
+                  <span className="text-amber-400 font-mono text-xs md:text-sm">+{lastCatch.points} XP</span>
                 </div>
               </div>
             )}
@@ -223,7 +223,7 @@ export function FishingGame() {
           {gameState === 'idle' || gameState === 'caught' ? (
             <button
               onClick={gameState === 'caught' ? resetGame : castLine}
-              className="w-full py-4 bg-gradient-to-r from-[#0A5CDD] to-[#2563EB] hover:from-[#0b6ef3] hover:to-[#3b82f6] text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transform transition active:scale-95 text-xl uppercase tracking-widest"
+              className="w-full py-3 md:py-4 bg-gradient-to-r from-[#0A5CDD] to-[#2563EB] hover:from-[#0b6ef3] hover:to-[#3b82f6] text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transform transition active:scale-95 text-lg md:text-xl uppercase tracking-widest"
             >
               {gameState === 'caught' ? 'Fish Again' : 'CAST LINE'}
             </button>
@@ -231,7 +231,7 @@ export function FishingGame() {
             <button
               onClick={reelIn}
               disabled={gameState === 'casting' || gameState === 'reeling'}
-              className={`w-full py-6 rounded-xl font-bold text-2xl uppercase tracking-widest transition-all ${gameState === 'bite'
+              className={`w-full py-4 md:py-6 rounded-xl font-bold text-xl md:text-2xl uppercase tracking-widest transition-all ${gameState === 'bite'
                 ? 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_30px_rgba(220,38,38,0.6)] animate-pulse cursor-pointer'
                 : 'bg-gray-800 text-gray-500 cursor-not-allowed'
                 }`}
