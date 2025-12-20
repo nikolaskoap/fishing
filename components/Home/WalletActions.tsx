@@ -36,7 +36,7 @@ export function WalletActions() {
             <p className="text-sm text-left text-[#A3B3C2]">
               Connected to wallet:{' '}
               <span className="bg-white font-mono text-black rounded-md p-[4px]">
-                {address}
+                {address?.slice(0, 6)}...{address?.slice(-4)}
               </span>
             </p>
             <p className="text-sm text-left text-[#A3B3C2]">

@@ -33,7 +33,7 @@ export function Demo() {
           <WalletActions />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 rounded-xl bg-[#001226]/50 border border-[#0A5CDD]/20">
             <h3 className="text-xs font-bold text-gray-500 mb-2">IDENTITY</h3>
             <User />

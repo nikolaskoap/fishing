@@ -127,18 +127,21 @@ export function FishingGame() {
       <OceanBackground />
 
       {/* UI Overlay */}
-      <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start text-xs md:text-sm">
-        <div className="bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#0A5CDD]/30">
-          <p className="text-[#A3B3C2] text-[10px] md:text-xs uppercase tracking-wider">Score</p>
-          <p className="text-xl md:text-2xl font-bold text-white font-mono">{score}</p>
-        </div>
-        {lastCatch && (
-          <div className="animate-fade-in-down bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#F472B6]/30">
-            <p className="text-[10px] md:text-xs uppercase tracking-wider text-right" style={{ color: lastCatch.color }}>{lastCatch.rarity}</p>
-            <p className="text-base md:text-lg font-bold text-white">{lastCatch.name}</p>
+      {/* UI Overlay - Hidden when caught to prevent overlap */}
+      {gameState !== 'caught' && (
+        <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start text-xs md:text-sm">
+          <div className="bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#0A5CDD]/30">
+            <p className="text-[#A3B3C2] text-[10px] md:text-xs uppercase tracking-wider">Score</p>
+            <p className="text-xl md:text-2xl font-bold text-white font-mono">{score}</p>
           </div>
-        )}
-      </div>
+          {lastCatch && (
+            <div className="animate-fade-in-down bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#F472B6]/30">
+              <p className="text-[10px] md:text-xs uppercase tracking-wider text-right" style={{ color: lastCatch.color }}>{lastCatch.rarity}</p>
+              <p className="text-base md:text-lg font-bold text-white">{lastCatch.name}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Center Action Area */}
       <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pt-20">
@@ -210,7 +213,7 @@ export function FishingGame() {
                   style={{ background: `linear-gradient(135deg, rgba(0,0,0,0.8), ${lastCatch.color}40)` }}
                 >
                   <span className="text-[10px] md:text-sm uppercase tracking-widest opacity-80">{lastCatch.rarity}</span>
-                  <span className="text-lg md:text-2xl break-words leading-tight" style={{ color: lastCatch.color }}>{lastCatch.name}</span>
+                  <span className="text-lg md:text-xl break-words leading-tight text-center" style={{ color: lastCatch.color }}>{lastCatch.name}</span>
                   <span className="text-amber-400 font-mono text-xs md:text-sm">+{lastCatch.points} XP</span>
                 </div>
               </div>
