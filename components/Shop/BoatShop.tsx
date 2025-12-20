@@ -1,0 +1,97 @@
+"use client";
+
+import { useState } from "react";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { parseUnits } from "viem";
+import { BOATS, Boat } from "@/lib/shop-data";
+import { USDT_ADDRESS, PAYMENT_RECIPIENT, ERC20_ABI } from "@/lib/contracts";
+
+export function BoatShop() {
+    const { isConnected, chainId } = useAccount();
+    const { writeContract, data: hash, isPending: isWritePending, error: writeError } = useWriteContract();
+
+    const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+        hash,
+    });
+
+    const [selectedBoat, setSelectedBoat] = useState<Boat | null>(null);
+
+    const handleBuy = (boat: Boat) => {
+        setSelectedBoat(boat);
+        try {
+            writeContract({
+                address: USDT_ADDRESS,
+                abi: ERC20_ABI,
+                functionName: "transfer",
+                args: [PAYMENT_RECIPIENT, parseUnits(boat.priceUsdt.toString(), 6)], // USDT has 6 decimals
+            });
+        } catch (err) {
+            console.error("Transaction failed to start", err);
+        }
+    };
+
+    const isPending = isWritePending || isConfirming;
+
+    return (
+        <div className="w-full max-w-md p-4 space-y-4">
+            <div className="p-4 rounded-xl bg-[#001226]/80 border border-[#0A5CDD]/20 backdrop-blur-sm">
+                <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-4 uppercase tracking-wider text-center">
+                    Boat Shop ⚓
+                </h3>
+
+                {!isConnected && (
+                    <div className="text-center text-gray-400 text-sm mb-4">
+                        Please connect your wallet to purchase boats.
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-3">
+                    {BOATS.map((boat) => (
+                        <div
+                            key={boat.id}
+                            className="flex items-center justify-between p-3 rounded-lg bg-[#001833] border border-[#1e3a8a] hovered:border-[#0A5CDD] transition-colors"
+                        >
+                            <div className="flex items-center space-x-3">
+                                <div className="text-3xl bg-[#002b4d] p-2 rounded-lg">{boat.image}</div>
+                                <div>
+                                    <h4 className="font-bold text-gray-200">{boat.name}</h4>
+                                    <p className="text-xs text-gray-400">{boat.description}</p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => handleBuy(boat)}
+                                disabled={!isConnected || isPending}
+                                className={`px-4 py-2 rounded-lg font-bold text-sm transition-all
+                  ${!isConnected
+                                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                                        : isPending
+                                            ? "bg-yellow-600/50 text-yellow-200 cursor-wait"
+                                            : "bg-gradient-to-r from-[#0A5CDD] to-[#0091FF] text-white hover:shadow-[0_0_10px_#0A5CDD]"
+                                    }
+                `}
+                            >
+                                {isPending && selectedBoat?.id === boat.id
+                                    ? "Buying..."
+                                    : `${boat.priceUsdt} USDT`
+                                }
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                {writeError && (
+                    <div className="mt-4 p-3 rounded-lg bg-red-900/50 border border-red-800 text-red-200 text-xs break-all">
+                        Error: {writeError.message.split(".")[0]}
+                    </div>
+                )}
+
+                {isConfirmed && selectedBoat && (
+                    <div className="mt-4 p-3 rounded-lg bg-green-900/50 border border-green-800 text-green-200 text-sm text-center">
+                        🎉 Successfully purchased {selectedBoat.name}!
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
