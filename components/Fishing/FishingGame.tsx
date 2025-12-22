@@ -161,14 +161,16 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
       <OceanBackground ref={oceanRef} />
 
       {/* Animated Swimming FIsh (Decor) */}
-      <div className="absolute top-[60%] left-1/2 -translate-x-1/2 w-32 h-32 pointer-events-none z-5 opacity-80 mix-blend-overlay">
-        <Image
-          src={fishFrames[currentFishFrame - 1]}
-          alt="Fish"
-          width={128}
-          height={128}
-          className="w-full h-full object-contain animate-float"
-        />
+      <div className="absolute top-[60%] left-1/2 -translate-x-1/2 w-32 h-16 pointer-events-none z-5 opacity-80 mix-blend-overlay overflow-hidden">
+        <div className="w-[200%] h-full flex">
+          <Image
+            src={fishFrames[currentFishFrame - 1]}
+            alt="Fish"
+            width={256}
+            height={128}
+            className="w-1/2 h-full object-contain animate-float"
+          />
+        </div>
       </div>
 
       {/* UI Overlay (Score & Info) */}
