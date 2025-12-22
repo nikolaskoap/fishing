@@ -266,10 +266,7 @@ export function Demo() {
                 <span className="font-mono">{total}/hr</span>
               </div>
             </div>
-            {/* Spin Wheel */}
-            <div className="col-span-2 mt-4">
-              <SpinWheel onWin={handleSpinWin} />
-            </div>
+            {/* Spin Wheel removed from here */}
           </div>
 
           {/* Mined Fish Box */}
@@ -291,6 +288,11 @@ export function Demo() {
           </div>
         </div>
       )}
+
+      {/* Spin Wheel - Visible to All */}
+      <div className="w-full max-w-md mt-4">
+        <SpinWheel onWin={handleSpinWin} />
+      </div>
 
       {/* Main Game Canvas */}
       <div className="w-full max-w-md">
