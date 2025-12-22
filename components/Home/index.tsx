@@ -2,13 +2,11 @@
 
 
 import { useState, useEffect, useRef } from 'react'
-import { FarcasterActions } from '@/components/Home/FarcasterActions'
-import { User } from '@/components/Home/User'
-import { WalletActions } from '@/components/Home/WalletActions'
-import { NotificationActions } from './NotificationActions'
 import { BoatShop } from '@/components/Shop/BoatShop'
+import { WalletActions } from '@/components/Home/WalletActions'
 import { FishingGame } from '../Fishing/FishingGame'
 import { SwapMenu } from '@/components/Swap/SwapMenu'
+import { SpinWheel } from '@/components/Home/SpinWheel'
 import { useFrame } from '@/components/farcaster-provider'
 import { useAccount } from 'wagmi'
 
@@ -187,6 +185,11 @@ export function Demo() {
     setRodLevel(newLevel)
   }
 
+  const handleSpinWin = (amount: number) => {
+    // Add to minedFish as 1 Fish = 1 Dollar
+    setMinedFish(prev => prev + amount)
+  }
+
   // Helper for UI
   const getMiningStats = () => {
     const penalty = Math.max(0, onlineMiners - 1)
@@ -263,6 +266,10 @@ export function Demo() {
                 <span className="font-mono">{total}/hr</span>
               </div>
             </div>
+            {/* Spin Wheel */}
+            <div className="col-span-2 mt-4">
+              <SpinWheel onWin={handleSpinWin} />
+            </div>
           </div>
 
           {/* Mined Fish Box */}
@@ -299,20 +306,6 @@ export function Demo() {
         <div className="p-4 rounded-xl bg-[#001226]/50 border border-[#0A5CDD]/20">
           <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">Player Control</h3>
           <WalletActions />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-xl bg-[#001226]/50 border border-[#0A5CDD]/20">
-            <h3 className="text-xs font-bold text-gray-500 mb-2">IDENTITY</h3>
-            <User />
-          </div>
-          <div className="p-4 rounded-xl bg-[#001226]/50 border border-[#0A5CDD]/20">
-            <h3 className="text-xs font-bold text-gray-500 mb-2">ACTIONS</h3>
-            <FarcasterActions />
-            <div className="mt-2">
-              <NotificationActions />
-            </div>
-          </div>
         </div>
       </div>
 
