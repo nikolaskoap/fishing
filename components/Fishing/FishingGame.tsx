@@ -41,21 +41,7 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
   const oceanRef = useRef<OceanBackgroundRef>(null)
 
   // Fish Animation State
-  // Fish Population State
-  const [swimmingFish, setSwimmingFish] = useState<{ id: number, img: string, top: number, duration: number, delay: number }[]>([])
-  const TOTAL_VARIANTS = 8
 
-  // Initialize Fish Population
-  useEffect(() => {
-    const initialFish = Array.from({ length: 5 }).map((_, i) => ({
-      id: i,
-      img: `/fishing/fish%20idle/${(i % TOTAL_VARIANTS) + 1}.png`,
-      top: 20 + Math.random() * 60, // Random depth 20-80%
-      duration: 15 + Math.random() * 10, // Slow swim 15-25s
-      delay: Math.random() * -20 // Negative delay to start mid-swim
-    }))
-    setSwimmingFish(initialFish)
-  }, [])
 
   const stopTimers = () => {
     if (biteTimerRef.current) clearTimeout(biteTimerRef.current)
@@ -167,28 +153,7 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
       <OceanBackground ref={oceanRef} />
 
       {/* Animated Swimming FIsh (Decor) */}
-      {/* Animated Swimming FIsh (Multi-Species Population) */}
-      {swimmingFish.map((fish) => (
-        <div
-          key={fish.id}
-          className="absolute left-[-20%] w-32 h-16 pointer-events-none z-5 overflow-hidden animate-swim-across"
-          style={{
-            top: `${fish.top}%`,
-            animationDuration: `${fish.duration}s`,
-            animationDelay: `${fish.delay}s`
-          }}
-        >
-          <div className="w-[200%] h-full flex">
-            <Image
-              src={fish.img}
-              alt="Fish"
-              width={256}
-              height={128}
-              className="w-1/2 h-full object-contain"
-            />
-          </div>
-        </div>
-      ))}
+
 
       {/* UI Overlay (Score & Info) */}
       {gameState !== 'caught' && (
@@ -293,7 +258,7 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
                   <line
                     x1={gameState === 'casting' ? '55%' : gameState === 'reeling' ? '72%' : '70%'}
                     y1={gameState === 'casting' ? '75%' : gameState === 'reeling' ? '60%' : '65%'}
-                    x2="50%" y2="55%"
+                    x2="50%" y2="56.5%"
                     stroke="rgba(255,255,255,0.8)"
                     strokeWidth="1.5"
                     strokeDasharray="4 2"
@@ -305,7 +270,7 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
                        ${gameState === 'casting' ? 'scale-0 translate-y-[-200px]' : 'scale-100 translate-y-0'}
                        transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]`}
                 >
-                  <div className={`${(gameState === 'waiting' || gameState === 'bite') ? 'animate-float' : ''}`}>
+                  <div className="">
                     <div className={`w-5 h-5 rounded-full bg-gradient-to-b from-red-400 to-red-600 shadow-[0_0_20px_rgba(239,68,68,0.6)] relative ring-2 ring-white/20`}>
                       <div className="absolute top-0 w-full h-1/2 bg-white rounded-t-full opacity-40"></div>
                       {gameState === 'bite' && (
