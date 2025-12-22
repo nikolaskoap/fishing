@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { OceanBackground, OceanBackgroundRef } from './OceanBackground'
-import { FISHING_RODS } from '@/lib/shop-data'
-import { SwapMenu } from '@/components/Swap/SwapMenu'
+// Removed SwapMenu and mining/shop data imports as they are handled in Home now
 
 type GameState = 'idle' | 'casting' | 'waiting' | 'bite' | 'reeling' | 'caught'
 
@@ -30,53 +29,10 @@ export function FishingGame() {
   const [lastCatch, setLastCatch] = useState<FishType | null>(null)
   const [message, setMessage] = useState('Ready to fish?')
 
-  // Mining State
-  const [minedFish, setMinedFish] = useState(0)
-  const [onlineMiners, setOnlineMiners] = useState(1) // Starts with just user
-  const [rodLevel, setRodLevel] = useState(1) // Default Level 1 (+10)
-  const BASE_RATE = 60
-
-  // Swap Menu State
-  const [isSwapOpen, setIsSwapOpen] = useState(false)
-
   // Timers
   const biteTimerRef = useRef<NodeJS.Timeout | null>(null)
   const escapeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const oceanRef = useRef<OceanBackgroundRef>(null)
-
-  // Mining Simulation Loop
-  useEffect(() => {
-    // Randomize miners every 10 seconds (simulating network activity)
-    const minerInterval = setInterval(() => {
-      // Skews towards low numbers for demo, max 20
-      setOnlineMiners(Math.floor(Math.random() * 10) + 1)
-    }, 10000)
-
-    // Mining Loop (Tick every 1s)
-    const miningInterval = setInterval(() => {
-      // Logic: Rate = (60 - (Miners - 1))
-      // Min rate 0 if too many miners? User implies functionality, assuming min 1 or 0.
-      // Let's cap drop at 0 base rate.
-      const minerPenalty = Math.max(0, onlineMiners - 1)
-      const currentBaseRate = Math.max(0, BASE_RATE - minerPenalty)
-
-      // Get Rod Bonus
-      let rodBonus = 0
-      if (rodLevel === 5) rodBonus = 59
-      else if (rodLevel === 2) rodBonus = 30
-      else rodBonus = 10 // Default Level 1
-
-      const totalRatePerHour = currentBaseRate + rodBonus
-      const fishPerSecond = totalRatePerHour / 3600
-
-      setMinedFish(prev => prev + fishPerSecond)
-    }, 1000)
-
-    return () => {
-      clearInterval(minerInterval)
-      clearInterval(miningInterval)
-    }
-  }, [onlineMiners, rodLevel])
 
   const stopTimers = () => {
     if (biteTimerRef.current) clearTimeout(biteTimerRef.current)
@@ -166,88 +122,18 @@ export function FishingGame() {
     setLastCatch(null)
   }
 
-  const handleSwap = (amount: number) => {
-    setMinedFish(prev => Math.max(0, prev - amount))
-    // In a real app, here we would credit USDC or show a success toast
-    setMessage(`Swapped ${amount} Fish for ${amount} USDC!`)
-    setIsSwapOpen(false)
-  }
-
   // Cleanup
   useEffect(() => {
     return () => stopTimers()
   }, [])
 
-  // Helper to get mining bonus for display
-  const getRodBonus = () => {
-    if (rodLevel === 5) return 59
-    if (rodLevel === 2) return 30
-    return 10
-  }
-
-  const miningRateInfo = () => {
-    const penalty = Math.max(0, onlineMiners - 1)
-    const currentBase = Math.max(0, BASE_RATE - penalty)
-    const bonus = getRodBonus()
-    return { currentBase, bonus, total: currentBase + bonus }
-  }
-
-  const { currentBase, bonus, total } = miningRateInfo()
-
   return (
     <div className="relative w-full aspect-[3/5] max-h-[600px] rounded-xl overflow-hidden shadow-2xl border border-[#0A5CDD]/50 bg-black">
 
-      <SwapMenu
-        isOpen={isSwapOpen}
-        onClose={() => setIsSwapOpen(false)}
-        minedFish={minedFish}
-        onSwap={handleSwap}
-      />
-
-      {/* Background Image */}
+      {/* Background Image/Canvas */}
       <OceanBackground ref={oceanRef} />
 
-      {/* Mining Overlay (Top Left) */}
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-none">
-        <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg border border-[#0A5CDD]/30 min-w-[120px]">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">⛏️ Mining Status</p>
-          <div className="flex justify-between text-xs text-blue-200">
-            <span>Miners:</span>
-            <span className="font-mono text-white">{onlineMiners}</span>
-          </div>
-          <div className="flex justify-between text-xs text-green-200">
-            <span>Base Rate:</span>
-            <span className="font-mono">{currentBase}/hr</span>
-          </div>
-          <div className="flex justify-between text-xs text-yellow-200">
-            <span>Rod Bonus:</span>
-            <span className="font-mono">+{bonus}/hr</span>
-          </div>
-          <div className="h-[1px] bg-white/10 my-1"></div>
-          <div className="flex justify-between text-sm font-bold text-white">
-            <span>Total:</span>
-            <span className="font-mono">{total}/hr</span>
-          </div>
-        </div>
-
-        <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg border border-[#F472B6]/30 pointer-events-auto">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">🎁 Mined Fish</p>
-          <div className="flex items-end justify-between gap-2">
-            <p className="text-xl font-mono text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 font-bold">
-              {minedFish.toFixed(4)}
-            </p>
-            <button
-              onClick={() => setIsSwapOpen(true)}
-              className="px-2 py-0.5 text-[10px] uppercase font-bold bg-green-500/20 text-green-300 border border-green-500/50 rounded hover:bg-green-500/30 transition-colors"
-            >
-              Swap
-            </button>
-          </div>
-        </div>
-      </div>
-
-
-      {/* UI Overlay */}
+      {/* UI Overlay (Score Only) */}
       {gameState !== 'caught' && (
         <div className="absolute top-4 right-4 z-10 flex gap-2 items-start text-xs md:text-sm">
           <div className="bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#0A5CDD]/30">
@@ -257,7 +143,7 @@ export function FishingGame() {
         </div>
       )}
 
-      {/* Caught Popup (Right Side, below score) */}
+      {/* Caught Popup */}
       {lastCatch && gameState !== 'caught' && (
         <div className="absolute top-20 right-4 z-10 animate-fade-in-down bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#F472B6]/30">
           <p className="text-[10px] md:text-xs uppercase tracking-wider text-right" style={{ color: lastCatch.color }}>{lastCatch.rarity}</p>
@@ -276,7 +162,7 @@ export function FishingGame() {
         {/* Fishing Line/Bobber Area */}
         <div className="relative h-64 w-full pointer-events-none z-10">
           {/* Rod Visual (Bottom Right) */}
-          <div className={`absolute bottom-[-20px] right-[-40px] w-32 h-32 md:w-48 md:h-48 transition-transform duration-500 origin-bottom-right z-20 ${gameState === 'casting' ? 'rotate-[-45deg]' : gameState === 'reeling' ? 'rotate-[10deg]' : 'rotate-0'}`}>
+          <div className={`absolute bottom-[-10px] right-[-30px] w-32 h-32 md:w-48 md:h-48 transition-transform duration-500 origin-bottom-right z-20 ${gameState === 'casting' ? 'rotate-[-45deg]' : gameState === 'reeling' ? 'rotate-[10deg]' : 'rotate-0'}`}>
             <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-xl">
               {/* Rod Handle */}
               <path d="M180,180 L140,140" stroke="#333" strokeWidth="12" strokeLinecap="round" />
@@ -284,6 +170,8 @@ export function FishingGame() {
               <path d="M140,140 L20,20" stroke="#fff" strokeWidth="3" strokeLinecap="round" className="opacity-80" />
               {/* Reel */}
               <circle cx="150" cy="150" r="12" fill="#444" stroke="#222" strokeWidth="2" />
+              {/* Line Guide (Tip) - Visual anchor */}
+              <circle cx="20" cy="20" r="3" fill="#fff" />
             </svg>
           </div>
 
@@ -293,11 +181,15 @@ export function FishingGame() {
               <div className="absolute top-0 left-0 w-full h-full">
                 {/* Dynamic Line Visual */}
                 <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                  {/* 
+                     Line Start (Rod Tip):
+                     Adjusted to x1="88%" y1="85%" to roughly match the tip of the rod at the bottom right.
+                  */}
                   <line
-                    x1="80%" y1="80%"
+                    x1="88%" y1="85%"
                     x2="50%" y2="55%"
-                    stroke="rgba(255,255,255,0.4)"
-                    strokeWidth="1"
+                    stroke="rgba(255,255,255,0.6)"
+                    strokeWidth="1.5"
                     className={`transition-all duration-300 ${gameState === 'casting' ? 'opacity-0' : 'opacity-100'}`}
                   />
                 </svg>
@@ -315,7 +207,7 @@ export function FishingGame() {
                         <div className="absolute -inset-4 border-2 border-red-500 rounded-full animate-ping"></div>
                       )}
                     </div>
-                    {/* Splash Effect Placeholder - needs global CSS */}
+                    {/* Splash Effect */}
                     {gameState === 'casting' && (
                       <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-4 bg-blue-400 rounded-full blur-sm opacity-0 animate-splash-water"></div>
                     )}
