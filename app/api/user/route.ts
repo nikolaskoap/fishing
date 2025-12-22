@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({
                 minedFish: 0,
                 rodLevel: 1,
-                lastSeen: Date.now()
+                lastSeen: Date.now(),
+                spinTickets: 1, // Bonus 1 ticket for new user
+                lastDailySpin: 0
             })
         }
 
@@ -31,7 +33,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
-        const { fid, minedFish, rodLevel, walletAddress } = body
+        const { fid, minedFish, rodLevel, walletAddress, xp, spinTickets, lastDailySpin } = body
 
         if (!fid) {
             return NextResponse.json({ error: 'Missing FID' }, { status: 400 })
@@ -43,7 +45,10 @@ export async function POST(req: NextRequest) {
         const dataToSave = {
             minedFish,
             rodLevel,
+            xp: xp || 0,
             lastSeen: Date.now(),
+            ...(spinTickets !== undefined && { spinTickets }),
+            ...(lastDailySpin !== undefined && { lastDailySpin }),
             ...(walletAddress && { wallet: walletAddress })
         }
 

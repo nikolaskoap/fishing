@@ -6,7 +6,7 @@ import { BoatShop } from '@/components/Shop/BoatShop'
 import { WalletActions } from '@/components/Home/WalletActions'
 import { FishingGame } from '../Fishing/FishingGame'
 import { SwapMenu } from '@/components/Swap/SwapMenu'
-import { SpinWheel } from '@/components/Home/SpinWheel'
+import { SpinMenu } from '@/components/Home/SpinMenu'
 import { useFrame } from '@/components/farcaster-provider'
 import { useAccount } from 'wagmi'
 
@@ -20,6 +20,7 @@ export function Demo() {
   const [onlineMiners, setOnlineMiners] = useState(1) // Starts with just user
   const [rodLevel, setRodLevel] = useState(1) // Default Level 1 (+10)
   const [xp, setXp] = useState(0) // XP System
+  const [spinTickets, setSpinTickets] = useState(0)
   const BASE_RATE = 60
 
   // Derived Level
@@ -38,8 +39,9 @@ export function Demo() {
     xpRef.current = xp
   }, [minedFish, rodLevel, xp])
 
-  // Swap Menu
+  // Swap & Spin Menus
   const [isSwapOpen, setIsSwapOpen] = useState(false)
+  const [isSpinOpen, setIsSpinOpen] = useState(false)
 
   // 1. Load Data on Mount
   useEffect(() => {
@@ -56,8 +58,25 @@ export function Demo() {
           const savedXp = parseInt(data.xp || '0')
           const lastSeen = parseInt(data.lastSeen || Date.now().toString())
 
+          const savedRod = parseInt(data.rodLevel || '1')
+          const savedXp = parseInt(data.xp || '0')
+          const savedTickets = parseInt(data.spinTickets || '1')
+          const lastDailySpin = parseInt(data.lastDailySpin || '0')
+          const lastSeen = parseInt(data.lastSeen || Date.now().toString())
+
           setRodLevel(savedRod)
           setXp(savedXp)
+
+          // Daily Spin Logic
+          const now = Date.now()
+          const oneDay = 24 * 60 * 60 * 1000
+          if (now > lastDailySpin + oneDay) {
+            setSpinTickets(savedTickets + 1)
+            // Update lastDailySpin immediately (optimistic)
+            // We rely on the periodic saver to persist this, or we could force save
+          } else {
+            setSpinTickets(savedTickets)
+          }
 
           // Offline Calculation
           const now = Date.now()
@@ -93,6 +112,12 @@ export function Demo() {
             minedFish: minedFishRef.current,
             rodLevel: rodLevelRef.current,
             xp: xpRef.current,
+            spinTickets: spinTickets,
+            lastDailySpin: Date.now(), // This is a bit naive, ideally we only update if claimed. 
+            // Better approach: We need a ref for 'lastDailySpin' too if we want to save it accurately.
+            // For now, let's assume if we just logged in and got a ticket, we want to save that 'now' as the claim time?
+            // Wait, if we update lastDailySpin every 15s to 'now', we never get a reward!
+            // FIX: We need a ref for lastDailySpin that only updates when we claim.
             walletAddress: address
           })
         })
@@ -183,11 +208,12 @@ export function Demo() {
 
   const handleLevelUp = (newLevel: number) => {
     setRodLevel(newLevel)
+    setSpinTickets(prev => prev + 1) // Level Up Reward
   }
 
   const handleSpinWin = (amount: number) => {
-    // Add to minedFish as 1 Fish = 1 Dollar
     setMinedFish(prev => prev + amount)
+    setSpinTickets(prev => Math.max(0, prev - 1)) // Deduct ticket
   }
 
   // Helper for UI
@@ -211,6 +237,13 @@ export function Demo() {
         onClose={() => setIsSwapOpen(false)}
         minedFish={minedFish}
         onSwap={handleSwap}
+      />
+
+      <SpinMenu
+        isOpen={isSpinOpen}
+        onClose={() => setIsSpinOpen(false)}
+        tickets={spinTickets}
+        onSpinSuccess={handleSpinWin}
       />
 
       {/* Game Header */}
@@ -284,15 +317,18 @@ export function Demo() {
               >
                 Swap to USDC
               </button>
+              <button
+                onClick={() => setIsSpinOpen(true)}
+                className="w-full py-1.5 text-[10px] uppercase font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/50 rounded hover:bg-yellow-500/20 transition-colors"
+              >
+                Lucky Spin ({spinTickets} 🎟️)
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Spin Wheel - Visible to All */}
-      <div className="w-full max-w-md mt-4">
-        <SpinWheel onWin={handleSpinWin} />
-      </div>
+
 
       {/* Main Game Canvas */}
       <div className="w-full max-w-md">

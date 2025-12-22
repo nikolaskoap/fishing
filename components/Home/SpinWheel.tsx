@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 interface SpinWheelProps {
     onWin: (amount: number) => void
+    tickets: number
 }
 
 const PRIZES = [
@@ -18,12 +19,12 @@ const PRIZES = [
     { amount: 0.05, label: '$0.05', color: '#E5E7EB' }, // Common
 ]
 
-export function SpinWheel({ onWin }: SpinWheelProps) {
+export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
     const [isSpinning, setIsSpinning] = useState(false)
     const [lastWin, setLastWin] = useState<number | null>(null)
 
     const spin = () => {
-        if (isSpinning) return
+        if (isSpinning || tickets <= 0) return
 
         setIsSpinning(true)
         setLastWin(null)
@@ -86,16 +87,16 @@ export function SpinWheel({ onWin }: SpinWheelProps) {
 
             <button
                 onClick={spin}
-                disabled={isSpinning}
+                disabled={isSpinning || tickets <= 0}
                 className={`
             w-full py-3 rounded-lg font-bold text-lg uppercase tracking-widest transition-all transform active:scale-95
-            ${isSpinning
+            ${isSpinning || tickets <= 0
                         ? 'bg-gray-600 cursor-not-allowed opacity-50'
                         : 'bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-400 hover:to-red-500 shadow-lg text-white ring-2 ring-yellow-500/50'
                     }
         `}
             >
-                {isSpinning ? 'SPINNING...' : 'SPIN FOR $100'}
+                {isSpinning ? 'SPINNING...' : tickets > 0 ? 'SPIN FOR $100' : 'NO TICKETS'}
             </button>
 
             <p className="text-[10px] text-gray-500 text-center">
