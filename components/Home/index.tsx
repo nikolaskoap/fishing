@@ -133,6 +133,9 @@ export function Demo() {
 
     // Mining Loop (Tick every 1s)
     const miningInterval = setInterval(() => {
+      const currentLv = Math.floor(xpRef.current / 1000) + 1
+      if (currentLv < 5) return // LOCKED if under level 5
+
       const minerPenalty = Math.max(0, onlineMiners - 1)
       const currentBaseRate = Math.max(0, BASE_RATE - minerPenalty)
 
