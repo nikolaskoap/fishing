@@ -254,71 +254,70 @@ export function Demo() {
 
       {/* Mining Dashboard (New Location) */}
       {/* LOCKED if Level < 5 */}
+      {/* Mined Fish & Actions - Always Visible */}
+      <div className="w-full max-w-md bg-[#001226]/80 p-3 rounded-xl border border-[#F472B6]/30 shadow-lg backdrop-blur-sm flex flex-col justify-between">
+        <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+          <span>🎁</span> Mined Fish
+        </p>
+        <div className="flex flex-col gap-2">
+          <p className="text-2xl font-mono text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 font-bold truncate">
+            {minedFish.toFixed(4)}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setIsSwapOpen(true)}
+              className="w-full py-2 text-[10px] uppercase font-bold bg-green-500/10 text-green-400 border border-green-500/50 rounded hover:bg-green-500/20 transition-colors"
+            >
+              Swap USDC
+            </button>
+            <button
+              onClick={() => setIsSpinOpen(true)}
+              className="w-full py-2 text-[10px] uppercase font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/50 rounded hover:bg-yellow-500/20 transition-colors"
+            >
+              Lucky Spin ({spinTickets}🎟️)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mining Status - Locked if Level < 5 */}
       {currentLevel < 5 ? (
         <div className="w-full max-w-md p-4 bg-[#001226]/80 rounded-xl border border-yellow-500/30 text-center animate-pulse">
-          <p className="text-yellow-400 font-bold uppercase tracking-widest text-sm mb-2">🔒 Locked Feature</p>
-          <p className="text-gray-400 text-xs">Reach <span className="text-white font-bold">Level 5</span> to unlock Boat & Auto-Mining.</p>
-          <div className="mt-3 w-full bg-gray-900 rounded-full h-2 overflow-hidden relative">
+          <p className="text-yellow-400 font-bold uppercase tracking-widest text-sm mb-2">🔒 Auto-Mining Locked</p>
+          <p className="text-gray-400 text-xs text-center mb-2">Reach <span className="text-white font-bold">Level 5</span> to unlock.</p>
+          <div className="w-full bg-gray-900 rounded-full h-1.5 overflow-hidden relative">
             <div
               className="bg-yellow-500 h-full transition-all duration-500"
               style={{ width: `${((xp % 1000) / 1000) * 100}%` }}
             ></div>
           </div>
-          <div className="flex justify-between items-center mt-2 px-1">
-            <p className="text-[10px] text-gray-500">Current: <span className="text-white">Level {currentLevel}</span></p>
-            <p className="text-[10px] text-yellow-500/80 font-mono">{xp % 1000} / 1000 XP</p>
+          <div className="flex justify-between items-center mt-1 px-1">
+            <p className="text-[10px] text-gray-500">Lvl {currentLevel}</p>
+            <p className="text-[10px] text-yellow-500/80 font-mono">{xp % 1000}/1000 XP</p>
           </div>
         </div>
       ) : (
-        <div className="w-full max-w-md grid grid-cols-2 gap-4">
-          {/* Status Box */}
-          <div className="bg-[#001226]/80 p-3 rounded-xl border border-[#0A5CDD]/30 shadow-lg backdrop-blur-sm">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-              <span>⛏️</span> Mining Status
-            </p>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs text-blue-200">
-                <span>Miners:</span>
-                <span className="font-mono text-white">{onlineMiners}</span>
-              </div>
-              <div className="flex justify-between text-xs text-green-200">
-                <span>Base Rate:</span>
-                <span className="font-mono">{currentBase}/hr</span>
-              </div>
-              <div className="flex justify-between text-xs text-yellow-200">
-                <span>Rod Bonus:</span>
-                <span className="font-mono">+{bonus}/hr</span>
-              </div>
-              <div className="h-[1px] bg-white/10 my-1"></div>
-              <div className="flex justify-between text-sm font-bold text-white">
-                <span>Total:</span>
-                <span className="font-mono">{total}/hr</span>
-              </div>
+        <div className="w-full max-w-md bg-[#001226]/80 p-3 rounded-xl border border-[#0A5CDD]/30 shadow-lg backdrop-blur-sm">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <span>⛏️</span> Mining Status
+          </p>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-blue-200">
+              <span>Miners:</span>
+              <span className="font-mono text-white">{onlineMiners}</span>
             </div>
-            {/* Spin Wheel removed from here */}
-          </div>
-
-          {/* Mined Fish Box */}
-          <div className="bg-[#001226]/80 p-3 rounded-xl border border-[#F472B6]/30 shadow-lg backdrop-blur-sm flex flex-col justify-between">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-              <span>🎁</span> Mined Fish
-            </p>
-            <div className="flex flex-col gap-2">
-              <p className="text-2xl font-mono text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 font-bold truncate">
-                {minedFish.toFixed(4)}
-              </p>
-              <button
-                onClick={() => setIsSwapOpen(true)}
-                className="w-full py-1.5 text-[10px] uppercase font-bold bg-green-500/10 text-green-400 border border-green-500/50 rounded hover:bg-green-500/20 transition-colors"
-              >
-                Swap to USDC
-              </button>
-              <button
-                onClick={() => setIsSpinOpen(true)}
-                className="w-full py-1.5 text-[10px] uppercase font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/50 rounded hover:bg-yellow-500/20 transition-colors"
-              >
-                Lucky Spin ({spinTickets} 🎟️)
-              </button>
+            <div className="flex justify-between text-xs text-green-200">
+              <span>Base Rate:</span>
+              <span className="font-mono">{currentBase}/hr</span>
+            </div>
+            <div className="flex justify-between text-xs text-yellow-200">
+              <span>Rod Bonus:</span>
+              <span className="font-mono">+{bonus}/hr</span>
+            </div>
+            <div className="h-[1px] bg-white/10 my-1"></div>
+            <div className="flex justify-between text-sm font-bold text-white">
+              <span>Total:</span>
+              <span className="font-mono">{total}/hr</span>
             </div>
           </div>
         </div>
