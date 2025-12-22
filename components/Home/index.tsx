@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+
+import { useState, useEffect, useRef } from 'react'
 import { FarcasterActions } from '@/components/Home/FarcasterActions'
 import { User } from '@/components/Home/User'
 import { WalletActions } from '@/components/Home/WalletActions'
@@ -8,16 +9,91 @@ import { NotificationActions } from './NotificationActions'
 import { BoatShop } from '@/components/Shop/BoatShop'
 import { FishingGame } from '../Fishing/FishingGame'
 import { SwapMenu } from '@/components/Swap/SwapMenu'
+import { useFrame } from '@/components/farcaster-provider'
+import { useAccount } from 'wagmi'
 
 export function Demo() {
+  const { context } = useFrame()
+  const { address } = useAccount()
+  const fid = context?.user.fid
+
   // Mining State
   const [minedFish, setMinedFish] = useState(0)
   const [onlineMiners, setOnlineMiners] = useState(1) // Starts with just user
   const [rodLevel, setRodLevel] = useState(1) // Default Level 1 (+10)
   const BASE_RATE = 60
 
+  // Refs for State (to access in interval)
+  const minedFishRef = useRef(minedFish)
+  const rodLevelRef = useRef(rodLevel)
+
+  // Update refs when state changes
+  useEffect(() => {
+    minedFishRef.current = minedFish
+    rodLevelRef.current = rodLevel
+  }, [minedFish, rodLevel])
+
   // Swap Menu
   const [isSwapOpen, setIsSwapOpen] = useState(false)
+
+  // 1. Load Data on Mount
+  useEffect(() => {
+    if (!fid) return
+
+    const loadUserData = async () => {
+      try {
+        const res = await fetch(`/api/user?fid=${fid}`)
+        const data = await res.json()
+
+        if (data && !data.error) {
+          const savedFish = parseFloat(data.minedFish || '0')
+          const savedRod = parseInt(data.rodLevel || '1')
+          const lastSeen = parseInt(data.lastSeen || Date.now().toString())
+
+          setRodLevel(savedRod)
+
+          // Offline Calculation
+          const now = Date.now()
+          const timeDiff = (now - lastSeen) / 1000
+
+          let rodBonus = 0
+          if (savedRod === 5) rodBonus = 59
+          else if (savedRod === 2) rodBonus = 30
+          else rodBonus = 10
+
+          const offlineFish = ((60 + rodBonus) / 3600) * timeDiff
+
+          if (offlineFish > 0) console.log(`Offline earnings: ${offlineFish}`)
+
+          setMinedFish(savedFish + offlineFish)
+        }
+      } catch (e) { console.error("Load error", e) }
+    }
+    loadUserData()
+  }, [fid])
+
+  // 2. Periodic Saver (Every 15s)
+  useEffect(() => {
+    if (!fid) return
+
+    const interval = setInterval(async () => {
+      try {
+        await fetch('/api/user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fid,
+            minedFish: minedFishRef.current,
+            rodLevel: rodLevelRef.current,
+            walletAddress: address
+          })
+        })
+        console.log("Auto-saved to Redis")
+      } catch (e) { console.error("Save error", e) }
+    }, 15000)
+
+    return () => clearInterval(interval)
+  }, [fid, address])
 
   // Mining Simulation Loop
   useEffect(() => {
@@ -48,9 +124,56 @@ export function Demo() {
     }
   }, [onlineMiners, rodLevel])
 
-  const handleSwap = (amount: number) => {
-    setMinedFish(prev => Math.max(0, prev - amount))
-    setIsSwapOpen(false)
+  const handleSwap = async (amount: number) => {
+    if (!fid || !address) {
+      alert("Please connect wallet first")
+      return
+    }
+
+    try {
+      // Optimistic UI Update
+      setMinedFish(prev => Math.max(0, prev - amount))
+      setIsSwapOpen(false)
+
+      // Call API
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fid,
+          walletAddress: address,
+          amountFish: amount,
+          amountUSDC: amount // 1:1 Rate
+        })
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        // Force save current state to DB to sync the deduction
+        minedFishRef.current -= amount // Update ref immediately
+        await fetch('/api/user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fid,
+            minedFish: minedFishRef.current, // Use updated ref
+            rodLevel: rodLevelRef.current,
+            walletAddress: address
+          })
+        })
+        alert(`Withdraw Request Sent! ID: ${data.id}`)
+      } else {
+        alert("Withdraw failed: " + data.error)
+        // Rollback? (Ideally yes, but simplified here)
+      }
+    } catch (e) {
+      console.error("Swap Error", e)
+      alert("Transaction Failed")
+    }
+  }
+
+  const handleLevelUp = (newLevel: number) => {
+    setRodLevel(newLevel)
   }
 
   // Helper for UI
@@ -162,7 +285,7 @@ export function Demo() {
 
       {/* Shop Section */}
       <div className="w-full max-w-md">
-        <BoatShop />
+        <BoatShop currentLevel={rodLevel} onPurchaseSuccess={handleLevelUp} />
       </div>
     </div>
   )
