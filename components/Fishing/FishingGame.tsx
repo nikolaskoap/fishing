@@ -187,7 +187,27 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
         </div>
       )}
 
-      {/* Caught Popup */}
+      {/* Caught Visual Overlay - Root Level for Centering */}
+      {gameState === 'caught' && lastCatch && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center animate-bounce-in pointer-events-none bg-black/20 backdrop-blur-sm">
+          <div className="text-7xl md:text-9xl filter drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] mb-8 animate-bounce">
+            {lastCatch.rarity === 'Trash' ? '👢' : '🐟'}
+          </div>
+          <div
+            className="px-8 py-6 rounded-3xl backdrop-blur-xl border border-white/20 text-white font-bold shadow-2xl flex flex-col items-center gap-3 w-full max-w-[280px] transform transition-all hover:scale-105"
+            style={{ background: `linear-gradient(135deg, rgba(0,0,0,0.95), ${lastCatch.color}60)` }}
+          >
+            <span className="text-xs uppercase tracking-[0.3em] opacity-80 border-b border-white/10 pb-2 w-full text-center">{lastCatch.rarity}</span>
+            <span className="text-2xl md:text-3xl break-words leading-tight text-center drop-shadow-lg" style={{ color: lastCatch.color }}>{lastCatch.name}</span>
+            <div className="bg-white/10 px-4 py-1.5 rounded-full mt-2 border border-white/5">
+              <span className="text-yellow-400 font-mono text-base md:text-lg font-bold">+{lastCatch.points} Fish</span>
+              <span className="text-[10px] text-gray-400 ml-2 border-l border-gray-600 pl-2">25 XP</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Caught Popup (Notification) */}
       {lastCatch && gameState !== 'caught' && (
         <div className="absolute top-20 right-4 z-10 animate-fade-in-down bg-black/70 backdrop-blur-xl p-3 md:p-4 rounded-xl border border-[#F472B6]/30 shadowavy flex flex-col items-end">
           <p className="text-[10px] md:text-xs uppercase tracking-wider font-bold mb-1" style={{ color: lastCatch.color }}>{lastCatch.rarity}</p>
@@ -260,24 +280,7 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
               </div>
             )}
 
-            {/* Caught Visual Overlay - Moved Higher to avoid overlap */}
-            {gameState === 'caught' && lastCatch && (
-              <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce-in z-30 w-full px-4 text-center pointer-events-none">
-                <div className="text-7xl md:text-9xl filter drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] mb-4 animate-bounce">
-                  {lastCatch.rarity === 'Trash' ? '👢' : '🐟'}
-                </div>
-                <div
-                  className="px-6 py-4 rounded-2xl backdrop-blur-xl border border-white/20 text-white font-bold shadow-2xl flex flex-col items-center gap-2 w-full max-w-[240px] transform transition-all hover:scale-105"
-                  style={{ background: `linear-gradient(135deg, rgba(0,0,0,0.9), ${lastCatch.color}40)` }}
-                >
-                  <span className="text-xs uppercase tracking-[0.2em] opacity-80 border-b border-white/10 pb-1 w-full text-center">{lastCatch.rarity}</span>
-                  <span className="text-xl md:text-2xl break-words leading-tight text-center drop-shadow-md" style={{ color: lastCatch.color }}>{lastCatch.name}</span>
-                  <div className="bg-white/10 px-3 py-1 rounded-full mt-1">
-                    <span className="text-yellow-400 font-mono text-sm md:text-base font-bold">+{lastCatch.points} Fish</span>
-                  </div>
-                </div>
-              </div>
-            )}
+
           </div>
         </div>
 
