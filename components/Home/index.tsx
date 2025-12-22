@@ -226,13 +226,16 @@ export function Demo() {
         <div className="w-full max-w-md p-4 bg-[#001226]/80 rounded-xl border border-yellow-500/30 text-center animate-pulse">
           <p className="text-yellow-400 font-bold uppercase tracking-widest text-sm mb-2">🔒 Locked Feature</p>
           <p className="text-gray-400 text-xs">Reach <span className="text-white font-bold">Level 5</span> to unlock Boat & Auto-Mining.</p>
-          <div className="mt-3 w-full bg-gray-900 rounded-full h-2 overflow-hidden">
+          <div className="mt-3 w-full bg-gray-900 rounded-full h-2 overflow-hidden relative">
             <div
               className="bg-yellow-500 h-full transition-all duration-500"
-              style={{ width: `${(currentLevel / 5) * 100}%` }}
+              style={{ width: `${Math.min(100, (xp / 4000) * 100)}%` }}
             ></div>
           </div>
-          <p className="text-[10px] text-gray-500 mt-1">Current: Level {currentLevel}</p>
+          <div className="flex justify-between items-center mt-2 px-1">
+            <p className="text-[10px] text-gray-500">Current: <span className="text-white">Level {currentLevel}</span></p>
+            <p className="text-[10px] text-yellow-500/80 font-mono">{xp} / 4000 XP</p>
+          </div>
         </div>
       ) : (
         <div className="w-full max-w-md grid grid-cols-2 gap-4">
