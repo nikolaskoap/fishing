@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { OceanBackground } from './OceanBackground'
+import { OceanBackground, OceanBackgroundRef } from './OceanBackground'
+import { FISHING_RODS } from '@/lib/shop-data'
+import { SwapMenu } from '@/components/Swap/SwapMenu'
 
 type GameState = 'idle' | 'casting' | 'waiting' | 'bite' | 'reeling' | 'caught'
 
@@ -28,9 +30,53 @@ export function FishingGame() {
   const [lastCatch, setLastCatch] = useState<FishType | null>(null)
   const [message, setMessage] = useState('Ready to fish?')
 
+  // Mining State
+  const [minedFish, setMinedFish] = useState(0)
+  const [onlineMiners, setOnlineMiners] = useState(1) // Starts with just user
+  const [rodLevel, setRodLevel] = useState(1) // Default Level 1 (+10)
+  const BASE_RATE = 60
+
+  // Swap Menu State
+  const [isSwapOpen, setIsSwapOpen] = useState(false)
+
   // Timers
   const biteTimerRef = useRef<NodeJS.Timeout | null>(null)
   const escapeTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const oceanRef = useRef<OceanBackgroundRef>(null)
+
+  // Mining Simulation Loop
+  useEffect(() => {
+    // Randomize miners every 10 seconds (simulating network activity)
+    const minerInterval = setInterval(() => {
+      // Skews towards low numbers for demo, max 20
+      setOnlineMiners(Math.floor(Math.random() * 10) + 1)
+    }, 10000)
+
+    // Mining Loop (Tick every 1s)
+    const miningInterval = setInterval(() => {
+      // Logic: Rate = (60 - (Miners - 1))
+      // Min rate 0 if too many miners? User implies functionality, assuming min 1 or 0.
+      // Let's cap drop at 0 base rate.
+      const minerPenalty = Math.max(0, onlineMiners - 1)
+      const currentBaseRate = Math.max(0, BASE_RATE - minerPenalty)
+
+      // Get Rod Bonus
+      let rodBonus = 0
+      if (rodLevel === 5) rodBonus = 59
+      else if (rodLevel === 2) rodBonus = 30
+      else rodBonus = 10 // Default Level 1
+
+      const totalRatePerHour = currentBaseRate + rodBonus
+      const fishPerSecond = totalRatePerHour / 3600
+
+      setMinedFish(prev => prev + fishPerSecond)
+    }, 1000)
+
+    return () => {
+      clearInterval(minerInterval)
+      clearInterval(miningInterval)
+    }
+  }, [onlineMiners, rodLevel])
 
   const stopTimers = () => {
     if (biteTimerRef.current) clearTimeout(biteTimerRef.current)
@@ -46,6 +92,11 @@ export function FishingGame() {
     setTimeout(() => {
       setGameState('waiting')
       setMessage('Waiting for a bite...')
+
+      // Trigger Ripple Effect when line lands
+      if (oceanRef.current) {
+        oceanRef.current.triggerRipple(0.5, 0.55)
+      }
 
       // Random wait time between 2s and 6s
       const waitTime = Math.random() * 4000 + 2000
@@ -115,31 +166,102 @@ export function FishingGame() {
     setLastCatch(null)
   }
 
+  const handleSwap = (amount: number) => {
+    setMinedFish(prev => Math.max(0, prev - amount))
+    // In a real app, here we would credit USDC or show a success toast
+    setMessage(`Swapped ${amount} Fish for ${amount} USDC!`)
+    setIsSwapOpen(false)
+  }
+
   // Cleanup
   useEffect(() => {
     return () => stopTimers()
   }, [])
 
+  // Helper to get mining bonus for display
+  const getRodBonus = () => {
+    if (rodLevel === 5) return 59
+    if (rodLevel === 2) return 30
+    return 10
+  }
+
+  const miningRateInfo = () => {
+    const penalty = Math.max(0, onlineMiners - 1)
+    const currentBase = Math.max(0, BASE_RATE - penalty)
+    const bonus = getRodBonus()
+    return { currentBase, bonus, total: currentBase + bonus }
+  }
+
+  const { currentBase, bonus, total } = miningRateInfo()
+
   return (
     <div className="relative w-full aspect-[3/5] max-h-[600px] rounded-xl overflow-hidden shadow-2xl border border-[#0A5CDD]/50 bg-black">
+
+      <SwapMenu
+        isOpen={isSwapOpen}
+        onClose={() => setIsSwapOpen(false)}
+        minedFish={minedFish}
+        onSwap={handleSwap}
+      />
+
       {/* Background Image */}
-      {/* Background Image */}
-      <OceanBackground />
+      <OceanBackground ref={oceanRef} />
+
+      {/* Mining Overlay (Top Left) */}
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-none">
+        <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg border border-[#0A5CDD]/30 min-w-[120px]">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">⛏️ Mining Status</p>
+          <div className="flex justify-between text-xs text-blue-200">
+            <span>Miners:</span>
+            <span className="font-mono text-white">{onlineMiners}</span>
+          </div>
+          <div className="flex justify-between text-xs text-green-200">
+            <span>Base Rate:</span>
+            <span className="font-mono">{currentBase}/hr</span>
+          </div>
+          <div className="flex justify-between text-xs text-yellow-200">
+            <span>Rod Bonus:</span>
+            <span className="font-mono">+{bonus}/hr</span>
+          </div>
+          <div className="h-[1px] bg-white/10 my-1"></div>
+          <div className="flex justify-between text-sm font-bold text-white">
+            <span>Total:</span>
+            <span className="font-mono">{total}/hr</span>
+          </div>
+        </div>
+
+        <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg border border-[#F472B6]/30 pointer-events-auto">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">🎁 Mined Fish</p>
+          <div className="flex items-end justify-between gap-2">
+            <p className="text-xl font-mono text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 font-bold">
+              {minedFish.toFixed(4)}
+            </p>
+            <button
+              onClick={() => setIsSwapOpen(true)}
+              className="px-2 py-0.5 text-[10px] uppercase font-bold bg-green-500/20 text-green-300 border border-green-500/50 rounded hover:bg-green-500/30 transition-colors"
+            >
+              Swap
+            </button>
+          </div>
+        </div>
+      </div>
+
 
       {/* UI Overlay */}
-      {/* UI Overlay - Hidden when caught to prevent overlap */}
       {gameState !== 'caught' && (
-        <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start text-xs md:text-sm">
+        <div className="absolute top-4 right-4 z-10 flex gap-2 items-start text-xs md:text-sm">
           <div className="bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#0A5CDD]/30">
             <p className="text-[#A3B3C2] text-[10px] md:text-xs uppercase tracking-wider">Score</p>
             <p className="text-xl md:text-2xl font-bold text-white font-mono">{score}</p>
           </div>
-          {lastCatch && (
-            <div className="animate-fade-in-down bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#F472B6]/30">
-              <p className="text-[10px] md:text-xs uppercase tracking-wider text-right" style={{ color: lastCatch.color }}>{lastCatch.rarity}</p>
-              <p className="text-base md:text-lg font-bold text-white">{lastCatch.name}</p>
-            </div>
-          )}
+        </div>
+      )}
+
+      {/* Caught Popup (Right Side, below score) */}
+      {lastCatch && gameState !== 'caught' && (
+        <div className="absolute top-20 right-4 z-10 animate-fade-in-down bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#F472B6]/30">
+          <p className="text-[10px] md:text-xs uppercase tracking-wider text-right" style={{ color: lastCatch.color }}>{lastCatch.rarity}</p>
+          <p className="text-base md:text-lg font-bold text-white">{lastCatch.name}</p>
         </div>
       )}
 
