@@ -40,6 +40,11 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
   const escapeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const oceanRef = useRef<OceanBackgroundRef>(null)
 
+  // Fish Animation State
+  const [currentFishFrame, setCurrentFishFrame] = useState(1)
+  const totalFrames = 8
+  const fishFrames = Array.from({ length: totalFrames }, (_, i) => `/fishing/fish%20idle/${i + 1}.png`)
+
   const stopTimers = () => {
     if (biteTimerRef.current) clearTimeout(biteTimerRef.current)
     if (escapeTimerRef.current) clearTimeout(escapeTimerRef.current)
@@ -141,11 +146,30 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
     return () => stopTimers()
   }, [])
 
+  // Sprite Animation Loop
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentFishFrame(prev => (prev % totalFrames) + 1)
+    }, 150) // Change frame every 150ms
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="relative w-full aspect-[3/5] max-h-[600px] rounded-xl overflow-hidden shadow-2xl border border-[#0A5CDD]/50 bg-black">
 
       {/* Background Image/Canvas */}
       <OceanBackground ref={oceanRef} />
+
+      {/* Animated Swimming FIsh (Decor) */}
+      <div className="absolute top-[60%] left-1/2 -translate-x-1/2 w-32 h-32 pointer-events-none z-5 opacity-80 mix-blend-overlay">
+        <Image
+          src={fishFrames[currentFishFrame - 1]}
+          alt="Fish"
+          width={128}
+          height={128}
+          className="w-full h-full object-contain animate-float"
+        />
+      </div>
 
       {/* UI Overlay (Score & Info) */}
       {gameState !== 'caught' && (

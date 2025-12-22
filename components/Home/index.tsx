@@ -229,12 +229,12 @@ export function Demo() {
           <div className="mt-3 w-full bg-gray-900 rounded-full h-2 overflow-hidden relative">
             <div
               className="bg-yellow-500 h-full transition-all duration-500"
-              style={{ width: `${Math.min(100, (xp / 4000) * 100)}%` }}
+              style={{ width: `${((xp % 1000) / 1000) * 100}%` }}
             ></div>
           </div>
           <div className="flex justify-between items-center mt-2 px-1">
             <p className="text-[10px] text-gray-500">Current: <span className="text-white">Level {currentLevel}</span></p>
-            <p className="text-[10px] text-yellow-500/80 font-mono">{xp} / 4000 XP</p>
+            <p className="text-[10px] text-yellow-500/80 font-mono">{xp % 1000} / 1000 XP</p>
           </div>
         </div>
       ) : (
