@@ -21,17 +21,24 @@ export function Demo() {
   const [minedFish, setMinedFish] = useState(0)
   const [onlineMiners, setOnlineMiners] = useState(1) // Starts with just user
   const [rodLevel, setRodLevel] = useState(1) // Default Level 1 (+10)
+  const [xp, setXp] = useState(0) // XP System
   const BASE_RATE = 60
+
+  // Derived Level
+  const currentLevel = Math.floor(xp / 1000) + 1
+  const xpForNextLevel = 1000 - (xp % 1000)
 
   // Refs for State (to access in interval)
   const minedFishRef = useRef(minedFish)
   const rodLevelRef = useRef(rodLevel)
+  const xpRef = useRef(xp)
 
   // Update refs when state changes
   useEffect(() => {
     minedFishRef.current = minedFish
     rodLevelRef.current = rodLevel
-  }, [minedFish, rodLevel])
+    xpRef.current = xp
+  }, [minedFish, rodLevel, xp])
 
   // Swap Menu
   const [isSwapOpen, setIsSwapOpen] = useState(false)
@@ -48,9 +55,11 @@ export function Demo() {
         if (data && !data.error) {
           const savedFish = parseFloat(data.minedFish || '0')
           const savedRod = parseInt(data.rodLevel || '1')
+          const savedXp = parseInt(data.xp || '0')
           const lastSeen = parseInt(data.lastSeen || Date.now().toString())
 
           setRodLevel(savedRod)
+          setXp(savedXp)
 
           // Offline Calculation
           const now = Date.now()
@@ -85,6 +94,7 @@ export function Demo() {
             fid,
             minedFish: minedFishRef.current,
             rodLevel: rodLevelRef.current,
+            xp: xpRef.current,
             walletAddress: address
           })
         })
@@ -158,6 +168,7 @@ export function Demo() {
             fid,
             minedFish: minedFishRef.current, // Use updated ref
             rodLevel: rodLevelRef.current,
+            xp: xpRef.current,
             walletAddress: address
           })
         })
@@ -210,55 +221,74 @@ export function Demo() {
       </div>
 
       {/* Mining Dashboard (New Location) */}
-      <div className="w-full max-w-md grid grid-cols-2 gap-4">
-        {/* Status Box */}
-        <div className="bg-[#001226]/80 p-3 rounded-xl border border-[#0A5CDD]/30 shadow-lg backdrop-blur-sm">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-            <span>⛏️</span> Mining Status
-          </p>
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-blue-200">
-              <span>Miners:</span>
-              <span className="font-mono text-white">{onlineMiners}</span>
-            </div>
-            <div className="flex justify-between text-xs text-green-200">
-              <span>Base Rate:</span>
-              <span className="font-mono">{currentBase}/hr</span>
-            </div>
-            <div className="flex justify-between text-xs text-yellow-200">
-              <span>Rod Bonus:</span>
-              <span className="font-mono">+{bonus}/hr</span>
-            </div>
-            <div className="h-[1px] bg-white/10 my-1"></div>
-            <div className="flex justify-between text-sm font-bold text-white">
-              <span>Total:</span>
-              <span className="font-mono">{total}/hr</span>
-            </div>
+      {/* LOCKED if Level < 5 */}
+      {currentLevel < 5 ? (
+        <div className="w-full max-w-md p-4 bg-[#001226]/80 rounded-xl border border-yellow-500/30 text-center animate-pulse">
+          <p className="text-yellow-400 font-bold uppercase tracking-widest text-sm mb-2">🔒 Locked Feature</p>
+          <p className="text-gray-400 text-xs">Reach <span className="text-white font-bold">Level 5</span> to unlock Boat & Auto-Mining.</p>
+          <div className="mt-3 w-full bg-gray-900 rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-yellow-500 h-full transition-all duration-500"
+              style={{ width: `${(currentLevel / 5) * 100}%` }}
+            ></div>
           </div>
+          <p className="text-[10px] text-gray-500 mt-1">Current: Level {currentLevel}</p>
         </div>
-
-        {/* Mined Fish Box */}
-        <div className="bg-[#001226]/80 p-3 rounded-xl border border-[#F472B6]/30 shadow-lg backdrop-blur-sm flex flex-col justify-between">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <span>🎁</span> Mined Fish
-          </p>
-          <div className="flex flex-col gap-2">
-            <p className="text-2xl font-mono text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 font-bold truncate">
-              {minedFish.toFixed(4)}
+      ) : (
+        <div className="w-full max-w-md grid grid-cols-2 gap-4">
+          {/* Status Box */}
+          <div className="bg-[#001226]/80 p-3 rounded-xl border border-[#0A5CDD]/30 shadow-lg backdrop-blur-sm">
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+              <span>⛏️</span> Mining Status
             </p>
-            <button
-              onClick={() => setIsSwapOpen(true)}
-              className="w-full py-1.5 text-[10px] uppercase font-bold bg-green-500/10 text-green-400 border border-green-500/50 rounded hover:bg-green-500/20 transition-colors"
-            >
-              Swap to USDC
-            </button>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-blue-200">
+                <span>Miners:</span>
+                <span className="font-mono text-white">{onlineMiners}</span>
+              </div>
+              <div className="flex justify-between text-xs text-green-200">
+                <span>Base Rate:</span>
+                <span className="font-mono">{currentBase}/hr</span>
+              </div>
+              <div className="flex justify-between text-xs text-yellow-200">
+                <span>Rod Bonus:</span>
+                <span className="font-mono">+{bonus}/hr</span>
+              </div>
+              <div className="h-[1px] bg-white/10 my-1"></div>
+              <div className="flex justify-between text-sm font-bold text-white">
+                <span>Total:</span>
+                <span className="font-mono">{total}/hr</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Mined Fish Box */}
+          <div className="bg-[#001226]/80 p-3 rounded-xl border border-[#F472B6]/30 shadow-lg backdrop-blur-sm flex flex-col justify-between">
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+              <span>🎁</span> Mined Fish
+            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-2xl font-mono text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 font-bold truncate">
+                {minedFish.toFixed(4)}
+              </p>
+              <button
+                onClick={() => setIsSwapOpen(true)}
+                className="w-full py-1.5 text-[10px] uppercase font-bold bg-green-500/10 text-green-400 border border-green-500/50 rounded hover:bg-green-500/20 transition-colors"
+              >
+                Swap to USDC
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Game Canvas */}
       <div className="w-full max-w-md">
-        <FishingGame />
+        <FishingGame
+          onCatch={(xpGained) => setXp(prev => prev + xpGained)}
+          currentLevel={currentLevel}
+          xpForNext={xpForNextLevel}
+        />
       </div>
 
       {/* Dashboard/Tools */}
@@ -284,9 +314,15 @@ export function Demo() {
       </div>
 
       {/* Shop Section */}
-      <div className="w-full max-w-md">
-        <BoatShop currentLevel={rodLevel} onPurchaseSuccess={handleLevelUp} />
-      </div>
+      {currentLevel < 5 ? (
+        <div className="w-full max-w-md p-6 text-center opacity-50 grayscale pb-20">
+          <p className="text-gray-500 text-sm">Shop is locked until Level 5</p>
+        </div>
+      ) : (
+        <div className="w-full max-w-md">
+          <BoatShop currentLevel={rodLevel} onPurchaseSuccess={handleLevelUp} />
+        </div>
+      )}
     </div>
   )
 }

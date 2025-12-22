@@ -14,20 +14,26 @@ type FishType = {
   color: string
 }
 
+// New Points System
 const FISH_TYPES: FishType[] = [
-  { name: 'Neon Guppy', rarity: 'Common', points: 10, color: '#4ADE80' },
-  { name: 'Cyber Bass', rarity: 'Common', points: 15, color: '#4ADE80' },
-  { name: 'Holo Tuna', rarity: 'Rare', points: 50, color: '#60A5FA' },
-  { name: 'Matrix Koi', rarity: 'Rare', points: 75, color: '#60A5FA' },
-  { name: 'Quantum Shark', rarity: 'Legendary', points: 1000, color: '#F472B6' },
+  { name: 'Neon Guppy', rarity: 'Common', points: 0.001, color: '#4ADE80' },
+  { name: 'Cyber Bass', rarity: 'Common', points: 0.002, color: '#4ADE80' },
+  { name: 'Holo Tuna', rarity: 'Rare', points: 0.5, color: '#60A5FA' },
+  { name: 'Matrix Koi', rarity: 'Rare', points: 1.0, color: '#60A5FA' },
+  { name: 'Quantum Shark', rarity: 'Legendary', points: 10, color: '#F472B6' },
   { name: 'Old Boot.exe', rarity: 'Trash', points: 0, color: '#9CA3AF' },
 ]
 
-export function FishingGame() {
+export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
+  currentLevel?: number
+  xpForNext?: number
+  onCatch?: (xp: number) => void
+}) {
   const [gameState, setGameState] = useState<GameState>('idle')
   const [score, setScore] = useState(0)
   const [lastCatch, setLastCatch] = useState<FishType | null>(null)
   const [message, setMessage] = useState('Ready to fish?')
+  const [showInfo, setShowInfo] = useState(false)
 
   // Timers
   const biteTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -92,28 +98,36 @@ export function FishingGame() {
     const rand = Math.random() * 100
     let caughtFish: FishType
 
-    // RNG Logic
-    if (rand < 15) {
-      // 15% Trash
-      caughtFish = FISH_TYPES.find(f => f.rarity === 'Trash') || FISH_TYPES[5]
-    } else if (rand < 65) {
-      // 50% Common (15-65)
-      const commons = FISH_TYPES.filter(f => f.rarity === 'Common')
-      caughtFish = commons[Math.floor(Math.random() * commons.length)]
-    } else if (rand < 95) {
-      // 30% Rare (65-95)
-      const rares = FISH_TYPES.filter(f => f.rarity === 'Rare')
-      caughtFish = rares[Math.floor(Math.random() * rares.length)]
-    } else {
-      // 5% Legendary (95-100)
+    // New Probabilities
+    // 0.001% Legendary
+    // 5% Rare
+    // 15% Trash
+    // ~79.999% Common
+
+    if (rand <= 0.001) {
+      // Legendary (0.001% chance)
       const legendaries = FISH_TYPES.filter(f => f.rarity === 'Legendary')
       caughtFish = legendaries[Math.floor(Math.random() * legendaries.length)]
+    } else if (rand <= 5) {
+      // Rare (5% chance approx)
+      const rares = FISH_TYPES.filter(f => f.rarity === 'Rare')
+      caughtFish = rares[Math.floor(Math.random() * rares.length)]
+    } else if (rand <= 20) {
+      // Trash (15% chance: 5 to 20)
+      caughtFish = FISH_TYPES.find(f => f.rarity === 'Trash') || FISH_TYPES[5]
+    } else {
+      // Common (Rest)
+      const commons = FISH_TYPES.filter(f => f.rarity === 'Common')
+      caughtFish = commons[Math.floor(Math.random() * commons.length)]
     }
 
     setScore(s => s + caughtFish.points)
     setLastCatch(caughtFish)
     setGameState('caught')
     setMessage(`Caught: ${caughtFish.name}! (+${caughtFish.points})`)
+
+    // Add XP (Fixed 25 per catch)
+    if (onCatch) onCatch(25)
   }
 
   const resetGame = () => {
@@ -133,13 +147,43 @@ export function FishingGame() {
       {/* Background Image/Canvas */}
       <OceanBackground ref={oceanRef} />
 
-      {/* UI Overlay (Score Only) */}
+      {/* UI Overlay (Score & Info) */}
       {gameState !== 'caught' && (
-        <div className="absolute top-4 right-4 z-10 flex gap-2 items-start text-xs md:text-sm">
-          <div className="bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg border border-[#0A5CDD]/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)] transform hover:scale-105 transition-transform">
-            <p className="text-[#A3B3C2] text-[10px] md:text-xs uppercase tracking-wider mb-0.5">Score</p>
-            <p className="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200 font-mono">{score}</p>
+        <div className="absolute top-4 right-4 z-20 flex gap-2 items-start">
+          {/* Info Button */}
+          <button
+            onClick={() => setShowInfo(true)}
+            className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-400/50 text-blue-200 font-bold flex items-center justify-center hover:bg-blue-500/40 backdrop-blur-md"
+          >
+            !
+          </button>
+        </div>
+      )}
+
+      {/* Info Modal */}
+      {showInfo && (
+        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-xl p-6 flex flex-col items-center justify-center animate-fade-in text-center">
+          <h2 className="text-xl font-bold text-white mb-4">Fishpedia 📖</h2>
+          <div className="space-y-3 text-left w-full max-w-xs text-sm">
+            <div className="p-2 border border-pink-500/30 bg-pink-500/10 rounded">
+              <span className="text-pink-400 font-bold">Legendary (0.001%)</span>
+              <p className="text-xs text-gray-400">Quantum Shark: 10 Fish</p>
+            </div>
+            <div className="p-2 border border-blue-500/30 bg-blue-500/10 rounded">
+              <span className="text-blue-400 font-bold">Rare (~5%)</span>
+              <p className="text-xs text-gray-400">Holo Tuna / Matrix Koi: 0.5 - 1.0 Fish</p>
+            </div>
+            <div className="p-2 border border-green-500/30 bg-green-500/10 rounded">
+              <span className="text-green-400 font-bold">Common</span>
+              <p className="text-xs text-gray-400">Neon Guppy / Cyber Bass: 0.001 - 0.002 Fish</p>
+            </div>
           </div>
+          <button
+            onClick={() => setShowInfo(false)}
+            className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white font-bold"
+          >
+            Close
+          </button>
         </div>
       )}
 
@@ -152,9 +196,10 @@ export function FishingGame() {
       )}
 
       {/* Center Action Area */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pt-20 pointer-events-none">
-        {/* Message Status */}
-        <div className={`mb-8 px-6 py-3 rounded-full bg-black/40 backdrop-blur-lg border border-white/10 text-white font-bold text-xl transition-all duration-300 transform ${gameState === 'bite' ? 'scale-125 bg-red-500/20 border-red-500/50 text-red-200 animate-pulse' : 'scale-100'}`}>
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pt-10 pointer-events-none">
+
+        {/* Message Status - Moved higher to avoid covering fish */}
+        <div className={`mb-12 px-6 py-3 rounded-full bg-black/40 backdrop-blur-lg border border-white/10 text-white font-bold text-xl transition-all duration-300 transform ${gameState === 'bite' ? 'scale-125 bg-red-500/20 border-red-500/50 text-red-200 animate-pulse' : 'scale-100'}`}>
           {message}
         </div>
 
@@ -163,9 +208,7 @@ export function FishingGame() {
           {/* Rod Visual (Bottom Right) */}
           <div className={`absolute bottom-[-10px] right-[-30px] w-32 h-32 md:w-48 md:h-48 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] origin-bottom-right z-20 ${gameState === 'casting' ? 'rotate-[-45deg] translate-y-4' : gameState === 'reeling' ? 'rotate-[10deg] scale-105' : 'rotate-0 hover:rotate-2'}`}>
             <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-2xl filter brightness-110">
-              {/* Rod Handle */}
               <path d="M180,180 L140,140" stroke="#333" strokeWidth="12" strokeLinecap="round" />
-              {/* Rod Body */}
               <defs>
                 <linearGradient id="rodGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#888" />
@@ -173,10 +216,8 @@ export function FishingGame() {
                 </linearGradient>
               </defs>
               <path d="M140,140 L20,20" stroke="url(#rodGradient)" strokeWidth="4" strokeLinecap="round" />
-              {/* Reel */}
               <circle cx="150" cy="150" r="14" fill="#333" stroke="#555" strokeWidth="2" />
               <circle cx="150" cy="150" r="4" fill="#111" />
-              {/* Line Guide (Tip) - Visual anchor */}
               <circle cx="20" cy="20" r="3" fill="#fff" className="animate-pulse" />
             </svg>
           </div>
@@ -185,7 +226,6 @@ export function FishingGame() {
           <div className="absolute inset-0 z-10">
             {gameState !== 'idle' && gameState !== 'caught' && (
               <div className="absolute top-0 left-0 w-full h-full">
-                {/* Dynamic Line Visual */}
                 <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                   <line
                     x1={gameState === 'casting' ? '55%' : gameState === 'reeling' ? '72%' : '70%'}
@@ -198,12 +238,10 @@ export function FishingGame() {
                   />
                 </svg>
 
-                {/* Bobber / Hook */}
                 <div className={`absolute top-[55%] left-1/2 -translate-x-1/2 w-4 h-4 
                        ${gameState === 'casting' ? 'scale-0 translate-y-[-200px]' : 'scale-100 translate-y-0'}
                        transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]`}
                 >
-                  {/* Float Animation Wrapper */}
                   <div className={`${(gameState === 'waiting' || gameState === 'bite') ? 'animate-float' : ''}`}>
                     <div className={`w-5 h-5 rounded-full bg-gradient-to-b from-red-400 to-red-600 shadow-[0_0_20px_rgba(239,68,68,0.6)] relative ring-2 ring-white/20`}>
                       <div className="absolute top-0 w-full h-1/2 bg-white rounded-t-full opacity-40"></div>
@@ -214,7 +252,6 @@ export function FishingGame() {
                         </>
                       )}
                     </div>
-                    {/* Splash Effect */}
                     {gameState === 'casting' && (
                       <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-4 bg-blue-400 rounded-full blur-sm opacity-0 animate-splash-water"></div>
                     )}
@@ -223,10 +260,10 @@ export function FishingGame() {
               </div>
             )}
 
-            {/* Caught Visual Overlay */}
+            {/* Caught Visual Overlay - Moved Higher to avoid overlap */}
             {gameState === 'caught' && lastCatch && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce-in z-50 w-full px-4 text-center pointer-events-none">
-                <div className="text-7xl md:text-9xl filter drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] mb-6 animate-bounce">
+              <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce-in z-30 w-full px-4 text-center pointer-events-none">
+                <div className="text-7xl md:text-9xl filter drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] mb-4 animate-bounce">
                   {lastCatch.rarity === 'Trash' ? '👢' : '🐟'}
                 </div>
                 <div
@@ -236,7 +273,7 @@ export function FishingGame() {
                   <span className="text-xs uppercase tracking-[0.2em] opacity-80 border-b border-white/10 pb-1 w-full text-center">{lastCatch.rarity}</span>
                   <span className="text-xl md:text-2xl break-words leading-tight text-center drop-shadow-md" style={{ color: lastCatch.color }}>{lastCatch.name}</span>
                   <div className="bg-white/10 px-3 py-1 rounded-full mt-1">
-                    <span className="text-yellow-400 font-mono text-sm md:text-base font-bold">+{lastCatch.points} XP</span>
+                    <span className="text-yellow-400 font-mono text-sm md:text-base font-bold">+{lastCatch.points} Fish</span>
                   </div>
                 </div>
               </div>
@@ -245,7 +282,7 @@ export function FishingGame() {
         </div>
 
         {/* Controls */}
-        <div className="mt-auto mb-10 w-full px-6 pointer-events-auto">
+        <div className="mt-auto mb-10 w-full px-6 pointer-events-auto z-40">
           {gameState === 'idle' || gameState === 'caught' ? (
             <button
               onClick={gameState === 'caught' ? resetGame : castLine}
@@ -253,7 +290,14 @@ export function FishingGame() {
             >
               <div className="absolute inset-0 translate-y-[100%] bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-500 group-hover:translate-y-[-100%] group-hover:animate-shimmer" />
               <span className="relative font-bold text-xl tracking-widest uppercase drop-shadow-md">
-                {gameState === 'caught' ? 'Fish Again' : 'CAST LINE'}
+                {gameState === 'caught' ? (
+                  <div className="flex flex-col items-center">
+                    <span>Fish Again</span>
+                    <span className="text-[10px] normal-case opacity-80 mt-1 font-mono">
+                      Lvl {currentLevel} • Next in {xpForNext} XP
+                    </span>
+                  </div>
+                ) : 'CAST LINE'}
               </span>
             </button>
           ) : (
