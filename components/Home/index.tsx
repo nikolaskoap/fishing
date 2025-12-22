@@ -56,10 +56,6 @@ export function Demo() {
           const savedFish = parseFloat(data.minedFish || '0')
           const savedRod = parseInt(data.rodLevel || '1')
           const savedXp = parseInt(data.xp || '0')
-          const lastSeen = parseInt(data.lastSeen || Date.now().toString())
-
-          const savedRod = parseInt(data.rodLevel || '1')
-          const savedXp = parseInt(data.xp || '0')
           const savedTickets = parseInt(data.spinTickets || '1')
           const lastDailySpin = parseInt(data.lastDailySpin || '0')
           const lastSeen = parseInt(data.lastSeen || Date.now().toString())
@@ -79,8 +75,8 @@ export function Demo() {
           }
 
           // Offline Calculation
-          const now = Date.now()
-          const timeDiff = (now - lastSeen) / 1000
+          const nowForOffline = Date.now()
+          const timeDiff = (nowForOffline - lastSeen) / 1000
 
           let rodBonus = 0
           if (savedRod === 5) rodBonus = 59
