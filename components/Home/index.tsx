@@ -20,12 +20,23 @@ export function Demo() {
   const [onlineMiners, setOnlineMiners] = useState(1) // Starts with just user
   const [rodLevel, setRodLevel] = useState(1) // Default Level 1 (+10)
   const [xp, setXp] = useState(0) // XP System
-  const [spinTickets, setSpinTickets] = useState(0)
+  const [spinTickets, setSpinTickets] = useState(0) // Inventory Tickets (Level Up / Referrals)
+  const [lastDailySpin, setLastDailySpin] = useState(0) // Timestamp of last daily usage
+
+  // Referral State
+  const [referralCount, setReferralCount] = useState(0)
+  const [hasClaimed3Ref, setHasClaimed3Ref] = useState(false)
+
   const BASE_RATE = 60
 
-  // Derived Level
-  const currentLevel = Math.floor(xp / 1000) + 1
-  const xpForNextLevel = 1000 - (xp % 1000)
+  // Derived Level (User requested /500 XP to level up)
+  const currentLevel = Math.floor(xp / 500) + 1
+  const xpForNextLevel = 500 - (xp % 500)
+
+  // Daily Spin Logic
+  const canSpinDaily = (Date.now() - lastDailySpin) > (24 * 60 * 60 * 1000)
+  // Total available spins = inventory tickets + 1 if daily is ready
+  const totalSpinsAvailable = spinTickets + (canSpinDaily ? 1 : 0)
 
   // Refs for State (to access in interval)
   const minedFishRef = useRef(minedFish)
@@ -56,34 +67,34 @@ export function Demo() {
           const savedFish = parseFloat(data.minedFish || '0')
           const savedRod = parseInt(data.rodLevel || '1')
           const savedXp = parseInt(data.xp || '0')
-          const savedTickets = parseInt(data.spinTickets || '1')
-          const lastDailySpin = parseInt(data.lastDailySpin || '0')
-          const lastSeen = parseInt(data.lastSeen || Date.now().toString())
+          const savedTickets = parseInt(data.spinTickets || '0') // Inventory only
+          const savedLastDaily = parseInt(data.lastDailySpin || '0')
+          const savedRefs = parseInt(data.referralCount || '0')
+          const savedLastSeen = parseInt(data.lastSeen || Date.now().toString())
 
           setRodLevel(savedRod)
           setXp(savedXp)
+          setSpinTickets(savedTickets)
+          setLastDailySpin(savedLastDaily)
+          setReferralCount(savedRefs)
 
-          // Daily Spin Logic
-          const now = Date.now()
-          const oneDay = 24 * 60 * 60 * 1000
-          if (now > lastDailySpin + oneDay) {
-            setSpinTickets(savedTickets + 1)
-            // Update lastDailySpin immediately (optimistic)
-            // We rely on the periodic saver to persist this, or we could force save
-          } else {
-            setSpinTickets(savedTickets)
-          }
+          if (savedRefs >= 3) setHasClaimed3Ref(true) // Should store this flag specifically ideally, but for now duplicate check is okay if strictly strictly strictly enforcing logic later
 
           // Offline Calculation
           const nowForOffline = Date.now()
-          const timeDiff = (nowForOffline - lastSeen) / 1000
+          const timeDiff = (nowForOffline - savedLastSeen) / 1000
 
           let rodBonus = 0
           if (savedRod === 5) rodBonus = 59
           else if (savedRod === 2) rodBonus = 30
           else rodBonus = 10
 
-          const offlineFish = ((60 + rodBonus) / 3600) * timeDiff
+          // Referral Booster: 100+ Refs = 2x Mining? Or User said "Mendapat Booster Mining"
+          let refBooster = 0
+          if (savedRefs >= 100) refBooster = 100 // Example: +100/hr or Multiplier?
+          // Let's implement as additive bonus for now to be safe.
+
+          const offlineFish = ((60 + rodBonus + refBooster) / 3600) * timeDiff
 
           if (offlineFish > 0) console.log(`Offline earnings: ${offlineFish}`)
 
@@ -109,11 +120,8 @@ export function Demo() {
             rodLevel: rodLevelRef.current,
             xp: xpRef.current,
             spinTickets: spinTickets,
-            lastDailySpin: Date.now(), // This is a bit naive, ideally we only update if claimed. 
-            // Better approach: We need a ref for 'lastDailySpin' too if we want to save it accurately.
-            // For now, let's assume if we just logged in and got a ticket, we want to save that 'now' as the claim time?
-            // Wait, if we update lastDailySpin every 15s to 'now', we never get a reward!
-            // FIX: We need a ref for lastDailySpin that only updates when we claim.
+            lastDailySpin: lastDailySpin,
+            referralCount: referralCount,
             walletAddress: address
           })
         })
@@ -122,7 +130,7 @@ export function Demo() {
     }, 15000)
 
     return () => clearInterval(interval)
-  }, [fid, address])
+  }, [fid, address, spinTickets, lastDailySpin, referralCount])
 
   // Mining Simulation Loop
   useEffect(() => {
@@ -133,7 +141,7 @@ export function Demo() {
 
     // Mining Loop (Tick every 1s)
     const miningInterval = setInterval(() => {
-      const currentLv = Math.floor(xpRef.current / 1000) + 1
+      const currentLv = Math.floor(xpRef.current / 500) + 1
       if (currentLv < 5) return // LOCKED if under level 5
 
       const minerPenalty = Math.max(0, onlineMiners - 1)
@@ -144,7 +152,11 @@ export function Demo() {
       else if (rodLevel === 2) rodBonus = 30
       else rodBonus = 10
 
-      const totalRatePerHour = currentBaseRate + rodBonus
+      // Referral Booster
+      let refBonus = 0
+      if (referralCount >= 100) refBonus = 100 // +100 Fish/Hr for whales
+
+      const totalRatePerHour = currentBaseRate + rodBonus + refBonus
       const fishPerSecond = totalRatePerHour / 3600
 
       setMinedFish(prev => prev + fishPerSecond)
@@ -154,20 +166,19 @@ export function Demo() {
       clearInterval(minerInterval)
       clearInterval(miningInterval)
     }
-  }, [onlineMiners, rodLevel])
+  }, [onlineMiners, rodLevel, referralCount])
 
   const handleSwap = async (amount: number) => {
+    // ... same as before
     if (!fid || !address) {
       alert("Please connect wallet first")
       return
     }
 
     try {
-      // Optimistic UI Update
       setMinedFish(prev => Math.max(0, prev - amount))
       setIsSwapOpen(false)
 
-      // Call API
       const res = await fetch('/api/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -181,23 +192,18 @@ export function Demo() {
 
       const data = await res.json()
       if (data.success) {
-        // Force save current state to DB to sync the deduction
-        minedFishRef.current -= amount // Update ref immediately
+        minedFishRef.current -= amount
         await fetch('/api/user', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             fid,
-            minedFish: minedFishRef.current, // Use updated ref
-            rodLevel: rodLevelRef.current,
-            xp: xpRef.current,
+            minedFish: minedFishRef.current,
             walletAddress: address
           })
-        })
+        }) // simple partial save 
         alert(`Withdraw Request Sent! ID: ${data.id}`)
       } else {
         alert("Withdraw failed: " + data.error)
-        // Rollback? (Ideally yes, but simplified here)
       }
     } catch (e) {
       console.error("Swap Error", e)
@@ -208,11 +214,40 @@ export function Demo() {
   const handleLevelUp = (newLevel: number) => {
     setRodLevel(newLevel)
     setSpinTickets(prev => prev + 1) // Level Up Reward
+    // If user has 100+ referrals, maybe give extra? for now sticking to basic request
   }
 
   const handleSpinWin = (amount: number) => {
     setMinedFish(prev => prev + amount)
-    setSpinTickets(prev => Math.max(0, prev - 1)) // Deduct ticket
+
+    // Logic: Use Daily first if available
+    const canSpinDailyNow = (Date.now() - lastDailySpin) > (24 * 60 * 60 * 1000)
+
+    if (canSpinDailyNow) {
+      setLastDailySpin(Date.now()) // Mark daily used NOW
+      // Do NOT consume inventory ticket
+    } else {
+      setSpinTickets(prev => Math.max(0, prev - 1)) // Consume inventory
+    }
+  }
+
+  // Debug/Simulate Referral
+  const simulateReferral = () => {
+    const newCount = referralCount + 1
+    setReferralCount(newCount)
+
+    // Bonus Logic
+    if (newCount === 3 && !hasClaimed3Ref) {
+      setSpinTickets(prev => prev + 1)
+      setHasClaimed3Ref(true)
+      alert("Referral Bonus: +1 Ticket for 3 Friends!")
+    }
+
+    if (newCount === 100) {
+      alert("Whale Status! Unlocked: Mining Booster + Special Spin!")
+      // Maybe give a special ticket?
+      setSpinTickets(prev => prev + 1)
+    }
   }
 
   // Helper for UI
@@ -223,10 +258,14 @@ export function Demo() {
     if (rodLevel === 5) bonus = 59
     else if (rodLevel === 2) bonus = 30
     else bonus = 10
-    return { currentBase, bonus, total: currentBase + bonus }
+
+    let refBonus = 0
+    if (referralCount >= 100) refBonus = 100
+
+    return { currentBase, bonus, refBonus, total: currentBase + bonus + refBonus }
   }
 
-  const { currentBase, bonus, total } = getMiningStats()
+  const { currentBase, bonus, refBonus, total } = getMiningStats()
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-start py-6 space-y-6 bg-[#000814]">
@@ -241,7 +280,9 @@ export function Demo() {
       <SpinMenu
         isOpen={isSpinOpen}
         onClose={() => setIsSpinOpen(false)}
-        tickets={spinTickets}
+        tickets={totalSpinsAvailable} // Show Total Available
+        canSpinDaily={canSpinDaily} // Pass info
+        nextDailySpin={lastDailySpin + (24 * 3600 * 1000)}
         onSpinSuccess={handleSpinWin}
       />
 
@@ -274,9 +315,10 @@ export function Demo() {
               </button>
               <button
                 onClick={() => setIsSpinOpen(true)}
-                className="w-full py-2 text-[10px] uppercase font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/50 rounded hover:bg-yellow-500/20 transition-colors"
+                className={`w-full py-2 text-[10px] uppercase font-bold border rounded transition-colors ${canSpinDaily ? 'bg-yellow-500 text-black border-yellow-400 hover:bg-yellow-400 animate-pulse' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/50'
+                  }`}
               >
-                Lucky Spin ({spinTickets}🎟️)
+                Lucky Spin ({totalSpinsAvailable}🎟️)
               </button>
             </div>
           </div>
@@ -290,12 +332,12 @@ export function Demo() {
             <div className="w-full bg-gray-900 rounded-full h-1.5 overflow-hidden relative">
               <div
                 className="bg-yellow-500 h-full transition-all duration-500"
-                style={{ width: `${((xp % 1000) / 1000) * 100}%` }}
+                style={{ width: `${((xp % 500) / 500) * 100}%` }}
               ></div>
             </div>
             <div className="flex justify-between items-center mt-1 px-1">
               <p className="text-[10px] text-gray-500">Lvl {currentLevel}</p>
-              <p className="text-[10px] text-yellow-500/80 font-mono">{xp % 1000}/1000 XP</p>
+              <p className="text-[10px] text-yellow-500/80 font-mono">{xp % 500}/500 XP</p>
             </div>
           </div>
         ) : (
@@ -316,6 +358,12 @@ export function Demo() {
                 <span>Rod Bonus:</span>
                 <span className="font-mono">+{bonus}/hr</span>
               </div>
+              {refBonus > 0 && (
+                <div className="flex justify-between text-xs text-purple-200">
+                  <span>Ref Booster:</span>
+                  <span className="font-mono">+{refBonus}/hr</span>
+                </div>
+              )}
               <div className="h-[1px] bg-white/10 my-1"></div>
               <div className="flex justify-between text-sm font-bold text-white">
                 <span>Total:</span>
@@ -335,8 +383,29 @@ export function Demo() {
         />
       </div>
 
-      {/* Dashboard/Tools */}
+      {/* Dashboard/Tools and Referrals */}
       <div className="w-full max-w-md px-4 space-y-4">
+
+        {/* Referrals Section - NEW */}
+        <div className="p-4 rounded-xl bg-[#001226]/50 border border-purple-500/20">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm font-bold text-purple-400 uppercase tracking-wider">Referrals</h3>
+            <span className="text-xl font-mono text-white">{referralCount}</span>
+          </div>
+
+          <div className="space-y-2 text-[10px] text-gray-400 mb-3">
+            <p className={referralCount >= 3 ? 'text-green-400' : ''}>• 3 Friends = 1 Free Ticket {referralCount >= 3 && '✅'}</p>
+            <p className={referralCount >= 100 ? 'text-green-400' : ''}>• 100 Friends = Mining Booster {referralCount >= 100 && '🚀'}</p>
+          </div>
+
+          <button
+            onClick={simulateReferral}
+            className="w-full py-2 text-xs bg-purple-600/20 text-purple-300 border border-purple-600/40 rounded hover:bg-purple-600/30 transition-colors"
+          >
+            + Invite Friend (Simulate)
+          </button>
+        </div>
+
         <div className="p-4 rounded-xl bg-[#001226]/50 border border-[#0A5CDD]/20">
           <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">Player Control</h3>
           <WalletActions />

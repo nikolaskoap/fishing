@@ -4,12 +4,14 @@ import { SpinWheel } from "./SpinWheel";
 
 interface SpinMenuProps {
     tickets: number;
+    canSpinDaily?: boolean; // New prop
+    nextDailySpin?: number; // New prop for countdown (optional)
     onSpinSuccess: (amount: number) => void;
     isOpen: boolean;
     onClose: () => void;
 }
 
-export function SpinMenu({ tickets, onSpinSuccess, isOpen, onClose }: SpinMenuProps) {
+export function SpinMenu({ tickets, onSpinSuccess, isOpen, onClose, canSpinDaily, nextDailySpin }: SpinMenuProps) {
     if (!isOpen) return null;
 
     return (
@@ -26,10 +28,13 @@ export function SpinMenu({ tickets, onSpinSuccess, isOpen, onClose }: SpinMenuPr
                     Lucky Spin
                 </h3>
 
-                <div className="bg-[#001833] py-2 px-4 rounded-full border border-yellow-500/30 mb-6">
+                <div className="bg-[#001833] py-2 px-4 rounded-full border border-yellow-500/30 mb-6 flex gap-4">
                     <p className="text-yellow-400 text-sm font-bold flex items-center gap-2">
                         🎟️ Tickets: <span className="text-white text-lg">{tickets}</span>
                     </p>
+                    {canSpinDaily && (
+                        <span className="text-xs bg-green-500 text-black px-2 py-1 rounded font-bold animate-pulse">DAILY READY</span>
+                    )}
                 </div>
 
                 <SpinWheel
@@ -37,9 +42,13 @@ export function SpinMenu({ tickets, onSpinSuccess, isOpen, onClose }: SpinMenuPr
                     tickets={tickets} // Pass to wheel to disable button
                 />
 
-                <p className="text-[10px] text-gray-500 text-center mt-6">
-                    Get 1 Ticket daily & every Level Up!
-                </p>
+                <div className="text-[10px] text-center mt-6 space-y-1">
+                    <p className="text-gray-400">Next Daily: {canSpinDaily ? 'NOW available!' : 'Refreshes 24h after use'}</p>
+                    <p className="text-gray-500">
+                        Get 1 Ticket daily & every Level Up!<br />
+                        Invite 3 friends for +1 Ticket!
+                    </p>
+                </div>
             </div>
         </div>
     );
