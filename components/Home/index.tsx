@@ -8,20 +8,24 @@ import { FishingGame } from '../Fishing/FishingGame'
 import { SwapMenu } from '@/components/Swap/SwapMenu'
 import { SpinMenu } from '@/components/Home/SpinMenu'
 import { useFrame } from '@/components/farcaster-provider'
-import { useAccount } from 'wagmi'
+import { useAccount, useWriteContract } from 'wagmi'
+import { parseUnits } from 'viem'
+import { USDT_ADDRESS, PAYMENT_RECIPIENT, ERC20_ABI } from "@/lib/contracts";
 
 export function Demo() {
   const { context } = useFrame()
   const { address } = useAccount()
   const fid = context?.user.fid
 
-  // Mining State
+  // Mining & Boat State
   const [minedFish, setMinedFish] = useState(0)
-  const [onlineMiners, setOnlineMiners] = useState(1) // Starts with just user
-  const [rodLevel, setRodLevel] = useState(1) // Default Level 1 (+10)
-  const [xp, setXp] = useState(0) // XP System
-  const [spinTickets, setSpinTickets] = useState(0) // Inventory Tickets (Level Up / Referrals)
-  const [lastDailySpin, setLastDailySpin] = useState(0) // Timestamp of last daily usage
+  const [onlineMiners, setOnlineMiners] = useState(1)
+  const [rodLevel, setRodLevel] = useState(1) // Legacy rod
+  const [activeBoatLevel, setActiveBoatLevel] = useState(0) // 0: None, 1: $10, 2: $20, 3: $50
+  const [boosterExpiry, setBoosterExpiry] = useState(0) // Timestamp
+  const [xp, setXp] = useState(0)
+  const [spinTickets, setSpinTickets] = useState(0)
+  const [lastDailySpin, setLastDailySpin] = useState(0)
 
   // Referral State
   const [referralCount, setReferralCount] = useState(0)
@@ -41,15 +45,17 @@ export function Demo() {
 
   // Refs for State (to access in interval)
   const minedFishRef = useRef(minedFish)
-  const rodLevelRef = useRef(rodLevel)
+  const boatRef = useRef(0)
+  const boosterRef = useRef(0)
   const xpRef = useRef(xp)
 
   // Update refs when state changes
   useEffect(() => {
     minedFishRef.current = minedFish
-    rodLevelRef.current = rodLevel
+    boatRef.current = activeBoatLevel
+    boosterRef.current = boosterExpiry
     xpRef.current = xp
-  }, [minedFish, rodLevel, xp])
+  }, [minedFish, activeBoatLevel, boosterExpiry, xp])
 
   // Swap & Spin Menus
   const [isSwapOpen, setIsSwapOpen] = useState(false)
@@ -67,14 +73,18 @@ export function Demo() {
         if (data && !data.error) {
           const savedFish = parseFloat(data.minedFish || '0')
           const savedRod = parseInt(data.rodLevel || '1')
+          const savedBoat = parseInt(data.activeBoatLevel || '0')
+          const savedBooster = parseInt(data.boosterExpiry || '0')
           const savedXp = parseInt(data.xp || '0')
-          const savedTickets = parseInt(data.spinTickets || '0') // Inventory only
+          const savedTickets = parseInt(data.spinTickets || '0')
           const savedLastDaily = parseInt(data.lastDailySpin || '0')
           const savedRefs = parseInt(data.referralCount || '0')
           const savedInvitees = data.invitees || []
           const savedLastSeen = parseInt(data.lastSeen || Date.now().toString())
 
           setRodLevel(savedRod)
+          setActiveBoatLevel(savedBoat)
+          setBoosterExpiry(savedBooster)
           setXp(savedXp)
           setSpinTickets(savedTickets)
           setLastDailySpin(savedLastDaily)
@@ -83,7 +93,6 @@ export function Demo() {
 
           if (savedRefs >= 3) setHasClaimed3Ref(true)
 
-          // Referral Context Check (Invite Link)
           const urlParams = new URLSearchParams(window.location.search)
           const refParam = urlParams.get('ref')
 
@@ -91,15 +100,15 @@ export function Demo() {
           const nowForOffline = Date.now()
           const timeDiff = (nowForOffline - savedLastSeen) / 1000
 
-          let rodBonus = 0
-          if (savedRod === 5) rodBonus = 59
-          else if (savedRod === 2) rodBonus = 30
-          else rodBonus = 10
+          let rate = 0
+          if (savedBoat === 1) rate = 10
+          else if (savedBoat === 2) rate = 25
+          else if (savedBoat === 3) rate = 60
 
-          let refBooster = 0
-          if (savedRefs >= 100) refBooster = 100
+          if (nowForOffline < savedBooster) rate *= 1.5
+          if (savedRefs >= 100) rate += 10
 
-          const offlineFish = ((60 + rodBonus + refBooster) / 3600) * timeDiff
+          const offlineFish = (rate / 3600) * timeDiff
           setMinedFish(savedFish + offlineFish)
 
           // Initial Save to register referral if present
@@ -136,7 +145,9 @@ export function Demo() {
           body: JSON.stringify({
             fid,
             minedFish: minedFishRef.current,
-            rodLevel: rodLevelRef.current,
+            activeBoatLevel: boatRef.current,
+            boosterExpiry: boosterRef.current,
+            rodLevel: rodLevel,
             xp: xpRef.current,
             spinTickets: spinTickets,
             lastDailySpin: lastDailySpin,
@@ -160,24 +171,15 @@ export function Demo() {
 
     // Mining Loop (Tick every 1s)
     const miningInterval = setInterval(() => {
-      const currentLv = Math.floor(xpRef.current / 500) + 1
-      if (currentLv < 5) return // LOCKED if under level 5
+      let rate = 0
+      if (boatRef.current === 1) rate = 10
+      else if (boatRef.current === 2) rate = 25
+      else if (boatRef.current === 3) rate = 60
 
-      const minerPenalty = Math.max(0, onlineMiners - 1)
-      const currentBaseRate = Math.max(0, BASE_RATE - minerPenalty)
+      if (Date.now() < boosterRef.current) rate *= 1.5
+      if (referralCount >= 100) rate += 10
 
-      let rodBonus = 0
-      if (rodLevel === 5) rodBonus = 59
-      else if (rodLevel === 2) rodBonus = 30
-      else rodBonus = 10
-
-      // Referral Booster
-      let refBonus = 0
-      if (referralCount >= 100) refBonus = 100 // +100 Fish/Hr for whales
-
-      const totalRatePerHour = currentBaseRate + rodBonus + refBonus
-      const fishPerSecond = totalRatePerHour / 3600
-
+      const fishPerSecond = rate / 3600
       setMinedFish(prev => prev + fishPerSecond)
     }, 1000)
 
@@ -238,53 +240,77 @@ export function Demo() {
 
   const handleSpinWin = (amount: number) => {
     setMinedFish(prev => prev + amount)
-
-    // Logic: Use Daily first if available
     const canSpinDailyNow = (Date.now() - lastDailySpin) > (24 * 60 * 60 * 1000)
-
     if (canSpinDailyNow) {
-      setLastDailySpin(Date.now()) // Mark daily used NOW
-      // Do NOT consume inventory ticket
+      setLastDailySpin(Date.now())
     } else {
-      setSpinTickets(prev => Math.max(0, prev - 1)) // Consume inventory
+      setSpinTickets(prev => Math.max(0, prev - 1))
     }
   }
 
-  // Debug/Simulate Referral
-  const simulateReferral = () => {
-    const newCount = referralCount + 1
-    setReferralCount(newCount)
+  // Payment Handlers (Boats / Boosters)
+  const { writeContract } = useWriteContract()
 
-    // Bonus Logic
-    if (newCount === 3 && !hasClaimed3Ref) {
-      setSpinTickets(prev => prev + 1)
-      setHasClaimed3Ref(true)
-      alert("Referral Bonus: +1 Ticket for 3 Friends!")
+  const handleSelectBoat = (level: number, price: number) => {
+    if (!address) {
+      alert("Please connect wallet")
+      return
     }
-
-    if (newCount === 100) {
-      alert("Whale Status! Unlocked: Mining Booster + Special Spin!")
-      // Maybe give a special ticket?
-      setSpinTickets(prev => prev + 1)
+    try {
+      writeContract({
+        address: USDT_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "transfer",
+        args: [PAYMENT_RECIPIENT, parseUnits(price.toString(), 6)],
+      })
+      setActiveBoatLevel(level)
+      alert(`Transaction for vessel initiated! (Wait for success)`)
+    } catch (e) {
+      console.error(e)
+      alert("Transaction Failed")
     }
   }
 
-  // Helper for UI
+  const handleBuyBooster = () => {
+    if (!address) return
+    try {
+      writeContract({
+        address: USDT_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "transfer",
+        args: [PAYMENT_RECIPIENT, parseUnits("5", 6)],
+      })
+      setBoosterExpiry(Date.now() + (60 * 60 * 1000))
+      alert("Booster Purchased! +50% Yield for 1 Hour.")
+    } catch (e) {
+      console.error(e)
+      alert("Transaction Failed")
+    }
+  }
+
+  const handleCatchFish = (amount: number, xpGained: number) => {
+    setMinedFish(prev => prev + amount)
+    setXp(prev => prev + xpGained)
+  }
+
+  // Calculate current effective rate
   const getMiningStats = () => {
-    const penalty = Math.max(0, onlineMiners - 1)
-    const currentBase = Math.max(0, BASE_RATE - penalty)
-    let bonus = 0
-    if (rodLevel === 5) bonus = 59
-    else if (rodLevel === 2) bonus = 30
-    else bonus = 10
+    let rate = 0
+    if (activeBoatLevel === 1) rate = 10
+    else if (activeBoatLevel === 2) rate = 25
+    else if (activeBoatLevel === 3) rate = 60
 
-    let refBonus = 0
-    if (referralCount >= 100) refBonus = 100
+    let boosterMult = 1.0
+    if (Date.now() < boosterExpiry) boosterMult = 1.5
 
-    return { currentBase, bonus, refBonus, total: currentBase + bonus + refBonus }
+    let refBonusValue = 0
+    if (referralCount >= 100) refBonusValue = 10
+
+    const total = (rate * boosterMult) + refBonusValue
+    return { total }
   }
 
-  const { currentBase, bonus, refBonus, total } = getMiningStats()
+  const { total } = getMiningStats()
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-start py-6 space-y-6 bg-[#000814]">
@@ -299,8 +325,8 @@ export function Demo() {
       <SpinMenu
         isOpen={isSpinOpen}
         onClose={() => setIsSpinOpen(false)}
-        tickets={totalSpinsAvailable} // Show Total Available
-        canSpinDaily={canSpinDaily} // Pass info
+        tickets={totalSpinsAvailable}
+        canSpinDaily={canSpinDaily}
         nextDailySpin={lastDailySpin + (24 * 3600 * 1000)}
         onSpinSuccess={handleSpinWin}
       />
@@ -311,94 +337,35 @@ export function Demo() {
           CYBER FISHING
         </h1>
         <p className="text-xs text-[#A3B3C2] uppercase tracking-[0.2em] animate-pulse">
-          Play to Earn Season 1
+          S1: ABYSSAL WATERS
         </p>
       </div>
 
-      {/* Mining Dashboard (New Location) */}
-      <div className="w-full max-w-md px-4 space-y-4">
-        <div className="bg-[#001226]/80 p-3 rounded-xl border border-[#F472B6]/30 shadow-lg backdrop-blur-sm flex flex-col justify-between">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <span>🎁</span> Mined Fish
-          </p>
-          <div className="flex flex-col gap-2">
-            <p className="text-2xl font-mono text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 font-bold truncate">
-              {minedFish.toFixed(4)}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setIsSwapOpen(true)}
-                className="w-full py-2 text-[10px] uppercase font-bold bg-green-500/10 text-green-400 border border-green-500/50 rounded hover:bg-green-500/20 transition-colors"
-              >
-                Swap USDC
-              </button>
-              <button
-                onClick={() => setIsSpinOpen(true)}
-                className={`w-full py-2 text-[10px] uppercase font-bold border rounded transition-colors ${canSpinDaily ? 'bg-yellow-500 text-black border-yellow-400 hover:bg-yellow-400 animate-pulse' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/50'
-                  }`}
-              >
-                Lucky Spin ({totalSpinsAvailable}🎟️)
-              </button>
+      {/* Balance Bar */}
+      <div className="w-full max-w-md px-4">
+        <div className="bg-[#001226]/90 p-3 rounded-2xl border border-white/5 flex justify-between items-center shadow-2xl backdrop-blur-xl">
+          <div>
+            <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest pl-1">Total Mined</p>
+            <div className="flex items-baseline gap-1">
+              <p className="text-2xl font-mono text-cyan-400 font-bold">{minedFish.toFixed(4)}</p>
+              <span className="text-[10px] text-cyan-800">FISH</span>
             </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setIsSwapOpen(true)} className="px-4 py-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/40 rounded-xl text-xs font-bold font-mono uppercase transition-all">Swap</button>
+            <button onClick={() => setIsSpinOpen(true)} className={`px-4 py-2 rounded-xl text-xs font-bold font-mono uppercase transition-all border ${canSpinDaily ? 'bg-yellow-500 text-black border-yellow-400 animate-pulse' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/40'}`}>Spin</button>
           </div>
         </div>
-
-        {/* Mining Status - Locked if Level < 5 */}
-        {currentLevel < 5 ? (
-          <div className="p-4 bg-[#001226]/80 rounded-xl border border-yellow-500/30 text-center animate-pulse">
-            <p className="text-yellow-400 font-bold uppercase tracking-widest text-sm mb-2">🔒 Auto-Mining Locked</p>
-            <p className="text-gray-400 text-xs text-center mb-2">Reach <span className="text-white font-bold">Level 5</span> to unlock.</p>
-            <div className="w-full bg-gray-900 rounded-full h-1.5 overflow-hidden relative">
-              <div
-                className="bg-yellow-500 h-full transition-all duration-500"
-                style={{ width: `${((xp % 500) / 500) * 100}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between items-center mt-1 px-1">
-              <p className="text-[10px] text-gray-500">Lvl {currentLevel}</p>
-              <p className="text-[10px] text-yellow-500/80 font-mono">{xp % 500}/500 XP</p>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-[#001226]/80 p-3 rounded-xl border border-[#0A5CDD]/30 shadow-lg backdrop-blur-sm">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-              <span>⛏️</span> Mining Status
-            </p>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs text-blue-200">
-                <span>Miners:</span>
-                <span className="font-mono text-white">{onlineMiners}</span>
-              </div>
-              <div className="flex justify-between text-xs text-green-200">
-                <span>Base Rate:</span>
-                <span className="font-mono">{currentBase}/hr</span>
-              </div>
-              <div className="flex justify-between text-xs text-yellow-200">
-                <span>Rod Bonus:</span>
-                <span className="font-mono">+{bonus}/hr</span>
-              </div>
-              {refBonus > 0 && (
-                <div className="flex justify-between text-xs text-purple-200">
-                  <span>Ref Booster:</span>
-                  <span className="font-mono">+{refBonus}/hr</span>
-                </div>
-              )}
-              <div className="h-[1px] bg-white/10 my-1"></div>
-              <div className="flex justify-between text-sm font-bold text-white">
-                <span>Total:</span>
-                <span className="font-mono">{total}/hr</span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Main Game Canvas - FULL WIDTH */}
+      {/* Main Game Canvas */}
       <div className="w-full">
         <FishingGame
-          onCatch={(xpGained) => setXp(prev => prev + xpGained)}
-          currentLevel={currentLevel}
-          xpForNext={xpForNextLevel}
+          activeBoatLevel={activeBoatLevel}
+          currentRate={total}
+          onCatch={handleCatchFish}
+          onSelectBoat={handleSelectBoat}
+          onBuyBooster={handleBuyBooster}
         />
       </div>
 

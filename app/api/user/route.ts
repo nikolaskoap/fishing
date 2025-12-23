@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
 
     try {
         const userData = await redis.hgetall(`user:${fid}`)
+        const invitees = await redis.smembers(`user:${fid}:invitees`)
 
         if (!userData) {
             // Default new user
@@ -19,11 +20,18 @@ export async function GET(req: NextRequest) {
                 rodLevel: 1,
                 lastSeen: Date.now(),
                 spinTickets: 1, // Bonus 1 ticket for new user
-                lastDailySpin: 0
+                lastDailySpin: 0,
+                referralCount: 0,
+                invitees: [],
+                activeBoatLevel: 0,
+                boosterExpiry: 0
             })
         }
 
-        return NextResponse.json(userData)
+        return NextResponse.json({
+            ...userData,
+            invitees: invitees || []
+        })
     } catch (error) {
         console.error('Redis Error:', error)
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -33,22 +41,43 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
-        const { fid, minedFish, rodLevel, walletAddress, xp, spinTickets, lastDailySpin } = body
+        const { fid, minedFish, rodLevel, activeBoatLevel, boosterExpiry, walletAddress, xp, spinTickets, lastDailySpin, referralCount, referrerFid } = body
 
         if (!fid) {
             return NextResponse.json({ error: 'Missing FID' }, { status: 400 })
         }
 
+        // Referral Logic Integration
+        if (referrerFid && referrerFid !== fid) {
+            // Check if this user was already referred or is already in the system
+            const alreadyExists = await redis.exists(`user:${fid}`)
+            const alreadyReferred = await redis.get(`user:${fid}:referred_by`)
+
+            if (!alreadyExists && !alreadyReferred) {
+                // First time this user is seen and they have a referrer
+                await redis.set(`user:${fid}:referred_by`, referrerFid)
+
+                // Increment referrer's count
+                await redis.hincrby(`user:${referrerFid}`, 'referralCount', 1)
+
+                // Track WHO they invited
+                await redis.sadd(`user:${referrerFid}:invitees`, fid)
+
+                console.log(`User ${fid} referred by ${referrerFid}`)
+            }
+        }
+
         // Save to Redis
-        // We update lastSeen to connect offline calculation later if needed, 
-        // though the client calculates offline diff.
         const dataToSave = {
             minedFish,
             rodLevel,
             xp: xp || 0,
+            activeBoatLevel: activeBoatLevel || 0,
+            boosterExpiry: boosterExpiry || 0,
             lastSeen: Date.now(),
             ...(spinTickets !== undefined && { spinTickets }),
             ...(lastDailySpin !== undefined && { lastDailySpin }),
+            ...(referralCount !== undefined && { referralCount }),
             ...(walletAddress && { wallet: walletAddress })
         }
 
