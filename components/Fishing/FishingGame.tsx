@@ -152,6 +152,19 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
       {/* Background Image/Canvas */}
       <OceanBackground ref={oceanRef} />
 
+      {/* Side Decorations (To fill empty space visually) */}
+      <div className="absolute inset-y-0 left-0 w-8 md:w-16 bg-gradient-to-r from-black/60 to-transparent z-10 pointer-events-none">
+        <div className="absolute bottom-0 left-0 w-full h-1/2 bg-[url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/dream-world/129.svg')] bg-no-repeat bg-bottom opacity-20 blur-[1px]"></div>
+        {/* Seaweed Left */}
+        <div className="absolute bottom-0 left-2 w-4 h-32 bg-green-900/40 rounded-t-full transform -skew-x-6 origin-bottom animate-sway-slow"></div>
+        <div className="absolute bottom-0 left-6 w-6 h-48 bg-green-800/30 rounded-t-full transform skew-x-3 origin-bottom animate-sway"></div>
+      </div>
+      <div className="absolute inset-y-0 right-0 w-8 md:w-16 bg-gradient-to-l from-black/60 to-transparent z-10 pointer-events-none">
+        {/* Seaweed Right */}
+        <div className="absolute bottom-0 right-2 w-4 h-40 bg-green-900/40 rounded-t-full transform skew-x-6 origin-bottom animate-sway-slow delay-700"></div>
+        <div className="absolute bottom-0 right-8 w-5 h-24 bg-green-800/30 rounded-t-full transform -skew-x-3 origin-bottom animate-sway delay-300"></div>
+      </div>
+
       {/* Animated Swimming FIsh (Decor) */}
 
 
