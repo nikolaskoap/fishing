@@ -147,7 +147,7 @@ export function FishingGame({ currentLevel = 1, xpForNext = 1000, onCatch }: {
 
 
   return (
-    <div className="relative w-full h-[65vh] min-h-[500px] bg-black overflow-hidden border-y border-[#0A5CDD]/50 shadow-2xl">
+    <div className="relative w-full h-[75vh] min-h-[600px] bg-black overflow-hidden border-y border-[#0A5CDD]/50 shadow-2xl">
 
       {/* Background Image/Canvas */}
       <OceanBackground ref={oceanRef} />
