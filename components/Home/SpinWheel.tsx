@@ -10,6 +10,23 @@ interface SpinWheelProps {
 const WHEEL_ORDER = [32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26, 0];
 const RED_NUMBERS = [32, 19, 21, 25, 34, 27, 36, 30, 23, 5, 16, 1, 14, 9, 18, 7, 12, 3];
 
+// Map specific Roulette Numbers to Prizes
+// User requested: 0.5, 0.05, 1, 5, 10, 100. Rest 0.
+// We map these to specific numbers on the wheel to distribute them.
+const PRIZE_VALUES: Record<number, number> = {
+    0: 100,   // Green Zero = Jackpot
+    32: 10,   // Red
+    15: 0,    // Black
+    19: 5,    // Red
+    4: 0, 21: 0, 2: 1, 25: 0, 17: 0.5, 34: 0,
+    6: 0, 27: 0.05, 13: 0, 36: 0, 11: 0, 30: 0,
+    8: 0, 23: 0, 10: 0, 5: 0, 24: 0, 16: 0,
+    33: 0, 1: 0, 20: 0, 14: 0, 31: 0, 9: 0,
+    22: 0, 18: 0, 29: 0, 7: 0, 28: 0, 12: 0,
+    35: 0, 3: 0, 26: 0
+    // Any undefined will defaults to 0 in logic below if missed
+};
+
 // Map of Number -> Angle (from LESS .spinto mixins)
 const ANGLE_MAP: Record<number, number> = {
     1: 278, 2: 106, 3: 30, 4: 87, 5: 238, 6: 146, 7: 354, 8: 207, 9: 316, 10: 228,
@@ -20,10 +37,10 @@ const ANGLE_MAP: Record<number, number> = {
 
 export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
     const [isSpinning, setIsSpinning] = useState(false)
-    const [result, setResult] = useState<{ num: number, color: string } | null>(null)
+    const [result, setResult] = useState<{ num: number, val: number, color: string } | null>(null)
     const [ballRotation, setBallRotation] = useState<number>(0)
     const [isResting, setIsResting] = useState(false)
-    const [history, setHistory] = useState<{ num: number, color: string }[]>([])
+    const [history, setHistory] = useState<{ val: number, color: string }[]>([])
 
     // Logic to spin
     const spin = () => {
@@ -44,29 +61,15 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
         // Animation Time (9s)
         setTimeout(() => {
             const color = winningNum === 0 ? 'green' : RED_NUMBERS.includes(winningNum) ? 'red' : 'black'
-            setResult({ num: winningNum, color })
+            const winAmount = PRIZE_VALUES[winningNum] ?? 0
+
+            setResult({ num: winningNum, val: winAmount, color })
             setIsResting(true) // trigger ball rest position
             setIsSpinning(false)
 
-            // Calculate win amount
-            // Logic form old SpinWheel:
-            // 0.05 mostly, rarely higher.
-            // But this is a roulette game now.
-            // Let's keep the payout logic simple for now or random as before but visually it matches the roulette number?
-            // Actually, usually roulette pays based on bet. Here we just spin for a prize.
-            // Let's keep the random prize logic detached from the number for now, OR make the number imply the prize.
-            // For simplicity/safety, let's just trigger the onWin callback with a random amount as before, 
-            // since the user didn't specify a payout table for the numbers.
-            // Old logic:
-            const rand = Math.random() * 100
-            let winAmount = 0.05
-            if (rand >= 99.9) winAmount = 100 // Jackpot
-            else if (rand >= 90) winAmount = 0.5
-            else winAmount = 0.05
-
             onWin(winAmount)
 
-            setHistory(prev => [{ num: winningNum, color }, ...prev].slice(0, 5))
+            setHistory(prev => [{ val: winAmount, color }, ...prev].slice(0, 5))
 
         }, 9000)
     }
@@ -239,7 +242,9 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
                                     // 37th child (index 36) is Green (0).
                                 }}
                             >
-                                <span className="pit">{num}</span>
+                                <span className="pit" style={{ transform: 'scale(1, 2) translateY(-5px)', fontSize: '10px' }}>
+                                    {PRIZE_VALUES[num] ?? 0}
+                                </span>
                             </li>
                         ))}
 
@@ -259,8 +264,8 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
                                 <span className="pt-8">Place Bets</span>
                             </div>
                             <div className="result" style={{ backgroundColor: result?.color === 'red' ? '#D00' : result?.color === 'black' ? '#222' : 'green' }}>
-                                <div className="result-number">{result?.num ?? '00'}</div>
-                                <div className="result-color">{result?.color ?? '-'}</div>
+                                <div className="result-number">{result?.val ?? 0}</div>
+                                <div className="result-color" style={{ fontSize: '12px' }}>{result?.val === 0 ? 'TRY AGAIN' : 'WIN!'}</div>
                             </div>
                         </div>
                     </div>
@@ -294,7 +299,7 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
                     <div className="flex justify-center gap-2 mt-2">
                         {history.map((h, i) => (
                             <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white border border-white/20 shadow-md ${h.color === 'red' ? 'bg-red-600' : h.color === 'black' ? 'bg-black' : 'bg-green-600'}`}>
-                                {h.num}
+                                {h.val}
                             </div>
                         ))}
                     </div>
