@@ -50,9 +50,38 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
         setIsResting(false)
         setResult(null)
 
-        // Random Number 0-36
-        const winningNum = Math.floor(Math.random() * 37)
-        const angle = ANGLE_MAP[winningNum] || 0
+        // --- RIGGED PROBABILITY LOGIC ---
+        // User wants: 
+        // 50% chance for '0' (Try Again)
+        // 50% chance for WINNING
+        //   - If WINNING: 50% (of win) = 0.05, 49.9% (of win) = 0.5, 0.1% (of win) = Rare [1, 5, 10, 100]
+
+        const rand = Math.random() * 100
+        let winningPrize = 0
+
+        if (rand < 50) {
+            winningPrize = 0
+        } else {
+            const winRand = Math.random() * 100
+            if (winRand < 50) {
+                winningPrize = 0.05
+            } else if (winRand < 99.9) {
+                winningPrize = 0.5
+            } else {
+                // Rare prizes
+                const rares = [1, 5, 10, 100]
+                winningPrize = rares[Math.floor(Math.random() * rares.length)]
+            }
+        }
+
+        // Find slots that have this prize
+        const matchingSlots = WHEEL_ORDER.filter(num => PRIZE_VALUES[num] === winningPrize)
+        // Fallback (shouldn't happen)
+        const chosenNum = matchingSlots.length > 0
+            ? matchingSlots[Math.floor(Math.random() * matchingSlots.length)]
+            : 15
+
+        const angle = ANGLE_MAP[chosenNum] || 0
         const spins = 8
         const targetRotation = (360 * -spins) + angle
 
@@ -60,16 +89,15 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
 
         // Animation Time (9s)
         setTimeout(() => {
-            const color = winningNum === 0 ? 'green' : RED_NUMBERS.includes(winningNum) ? 'red' : 'black'
-            const winAmount = PRIZE_VALUES[winningNum] ?? 0
+            const color = chosenNum === 0 ? 'green' : RED_NUMBERS.includes(chosenNum) ? 'red' : 'black'
 
-            setResult({ num: winningNum, val: winAmount, color })
+            setResult({ num: chosenNum, val: winningPrize, color })
             setIsResting(true) // trigger ball rest position
             setIsSpinning(false)
 
-            onWin(winAmount)
+            onWin(winningPrize)
 
-            setHistory(prev => [{ val: winAmount, color }, ...prev].slice(0, 5))
+            setHistory(prev => [{ val: winningPrize, color }, ...prev].slice(0, 5))
 
         }, 9000)
     }
@@ -77,7 +105,7 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
     const reset = () => {
         setIsResting(false)
         setResult(null)
-        setBallRotation(0) // Reset rotation? Or just remove 'rest' class
+        setBallRotation(0)
     }
 
     return (
@@ -264,7 +292,9 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
                                 <span className="pt-8">Place Bets</span>
                             </div>
                             <div className="result" style={{ backgroundColor: result?.color === 'red' ? '#D00' : result?.color === 'black' ? '#222' : 'green' }}>
-                                <div className="result-number">{result?.val ?? 0}</div>
+                                <div className="result-number" style={{ fontSize: result && result.val < 1 ? '32px' : '48px' }}>
+                                    {result?.val}
+                                </div>
                                 <div className="result-color" style={{ fontSize: '12px' }}>{result?.val === 0 ? 'TRY AGAIN' : 'WIN!'}</div>
                             </div>
                         </div>

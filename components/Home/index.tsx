@@ -25,6 +25,7 @@ export function Demo() {
 
   // Referral State
   const [referralCount, setReferralCount] = useState(0)
+  const [invitees, setInvitees] = useState<string[]>([])
   const [hasClaimed3Ref, setHasClaimed3Ref] = useState(false)
 
   const BASE_RATE = 60
@@ -70,6 +71,7 @@ export function Demo() {
           const savedTickets = parseInt(data.spinTickets || '0') // Inventory only
           const savedLastDaily = parseInt(data.lastDailySpin || '0')
           const savedRefs = parseInt(data.referralCount || '0')
+          const savedInvitees = data.invitees || []
           const savedLastSeen = parseInt(data.lastSeen || Date.now().toString())
 
           setRodLevel(savedRod)
@@ -77,8 +79,13 @@ export function Demo() {
           setSpinTickets(savedTickets)
           setLastDailySpin(savedLastDaily)
           setReferralCount(savedRefs)
+          setInvitees(savedInvitees)
 
-          if (savedRefs >= 3) setHasClaimed3Ref(true) // Should store this flag specifically ideally, but for now duplicate check is okay if strictly strictly strictly enforcing logic later
+          if (savedRefs >= 3) setHasClaimed3Ref(true)
+
+          // Referral Context Check (Invite Link)
+          const urlParams = new URLSearchParams(window.location.search)
+          const refParam = urlParams.get('ref')
 
           // Offline Calculation
           const nowForOffline = Date.now()
@@ -89,16 +96,28 @@ export function Demo() {
           else if (savedRod === 2) rodBonus = 30
           else rodBonus = 10
 
-          // Referral Booster: 100+ Refs = 2x Mining? Or User said "Mendapat Booster Mining"
           let refBooster = 0
-          if (savedRefs >= 100) refBooster = 100 // Example: +100/hr or Multiplier?
-          // Let's implement as additive bonus for now to be safe.
+          if (savedRefs >= 100) refBooster = 100
 
           const offlineFish = ((60 + rodBonus + refBooster) / 3600) * timeDiff
-
-          if (offlineFish > 0) console.log(`Offline earnings: ${offlineFish}`)
-
           setMinedFish(savedFish + offlineFish)
+
+          // Initial Save to register referral if present
+          if (refParam && refParam !== fid.toString()) {
+            await fetch('/api/user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fid,
+                minedFish: savedFish + offlineFish,
+                rodLevel: savedRod,
+                xp: savedXp,
+                spinTickets: savedTickets,
+                lastDailySpin: savedLastDaily,
+                referrerFid: refParam
+              })
+            })
+          }
         }
       } catch (e) { console.error("Load error", e) }
     }
@@ -386,24 +405,43 @@ export function Demo() {
       {/* Dashboard/Tools and Referrals */}
       <div className="w-full max-w-md px-4 space-y-4">
 
-        {/* Referrals Section - NEW */}
+        {/* Referrals Section - ENHANCED */}
         <div className="p-4 rounded-xl bg-[#001226]/50 border border-purple-500/20">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-bold text-purple-400 uppercase tracking-wider">Referrals</h3>
             <span className="text-xl font-mono text-white">{referralCount}</span>
           </div>
 
-          <div className="space-y-2 text-[10px] text-gray-400 mb-3">
-            <p className={referralCount >= 3 ? 'text-green-400' : ''}>• 3 Friends = 1 Free Ticket {referralCount >= 3 && '✅'}</p>
+          <div className="space-y-2 text-[10px] text-gray-400 mb-4">
+            <p className={referralCount >= 3 ? 'text-green-400' : ''}>• 3 Friends = 1 Free Ticket {hasClaimed3Ref && '✅'}</p>
             <p className={referralCount >= 100 ? 'text-green-400' : ''}>• 100 Friends = Mining Booster {referralCount >= 100 && '🚀'}</p>
           </div>
 
-          <button
-            onClick={simulateReferral}
-            className="w-full py-2 text-xs bg-purple-600/20 text-purple-300 border border-purple-600/40 rounded hover:bg-purple-600/30 transition-colors"
-          >
-            + Invite Friend (Simulate)
-          </button>
+          <div className="bg-black/40 p-2 rounded border border-white/10 mb-3 overflow-hidden">
+            <p className="text-[8px] text-gray-500 uppercase mb-1">Your Invite Link:</p>
+            <p className="text-[10px] font-mono text-purple-300 break-all select-all">
+              {typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}/?ref=${fid}` : ''}
+            </p>
+          </div>
+
+          <div className="mt-4 border-t border-white/5 pt-3">
+            <p className="text-[8px] text-gray-500 uppercase mb-2 flex justify-between">
+              <span>Invited Users ({invitees.length})</span>
+              <span className="text-purple-400/50">Linked Status</span>
+            </p>
+            <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
+              {invitees.length > 0 ? (
+                invitees.map((inviteeId) => (
+                  <div key={inviteeId} className="flex justify-between items-center p-2 bg-purple-500/5 border border-purple-500/10 rounded">
+                    <span className="text-[10px] text-purple-200 font-mono">FID: {inviteeId}</span>
+                    <span className="text-[10px] text-green-500/50 font-bold uppercase tracking-tighter">Active</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[10px] text-gray-600 italic text-center py-2">No friends invited yet.</p>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="p-4 rounded-xl bg-[#001226]/50 border border-[#0A5CDD]/20">
