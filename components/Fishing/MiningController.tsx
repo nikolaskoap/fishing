@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-export type FishRarity = 'Common' | 'Uncommon' | 'Epic' | 'Legendary'
+export type FishRarity = 'COMMON' | 'UNCOMMON' | 'EPIC' | 'LEGENDARY'
 
 export interface FishCatch {
     id: string
@@ -12,10 +12,10 @@ export interface FishCatch {
 }
 
 const FISH_VALUES: Record<FishRarity, number> = {
-    Legendary: 10,
-    Epic: 5,
-    Uncommon: 3,
-    Common: 1
+    LEGENDARY: 10,
+    EPIC: 5,
+    UNCOMMON: 3,
+    COMMON: 1
 }
 
 interface MiningControllerProps {
@@ -41,41 +41,13 @@ export default function MiningController({
     const [currentIndex, setCurrentIndex] = useState(initialIndex)
     const [hourStart, setHourStart] = useState(Date.now())
 
-    // Core Bucket Generation Logic (Anti-Abuse)
-    const generateBucket = useCallback((cap: number) => {
-        if (cap <= 0) return []
-
-        let remaining = cap
-        const newBucket: FishRarity[] = []
-
-        // Greedy-ish random distribution to fill cap
-        while (remaining > 0) {
-            let possible: FishRarity[] = []
-            if (remaining >= 10) possible.push('Legendary')
-            if (remaining >= 5) possible.push('Epic')
-            if (remaining >= 3) possible.push('Uncommon')
-            if (remaining >= 1) possible.push('Common')
-
-            const choice = possible[Math.floor(Math.random() * possible.length)]
-            newBucket.push(choice)
-            remaining -= FISH_VALUES[choice]
-        }
-
-        // Shuffle bucket
-        return newBucket.sort(() => Math.random() - 0.5)
-    }, [])
-
-    // Check for new hour
+    // Simplified: Mirror the server-side bucket
     useEffect(() => {
-        const now = Date.now()
-        if (now - hourStart >= 3600000 || bucket.length === 0) {
-            const newBucket = generateBucket(fishCapPerHour)
-            setBucket(newBucket)
-            setCurrentIndex(0)
-            setHourStart(now - (now % 3600000)) // Snap to start of hour
-            if (onProgressUpdate) onProgressUpdate(newBucket, 0)
+        if (initialBucket.length > 0) {
+            setBucket(initialBucket)
+            setCurrentIndex(initialIndex)
         }
-    }, [hourStart, fishCapPerHour, generateBucket, bucket.length])
+    }, [initialBucket, initialIndex])
 
     // Casting Loop
     useEffect(() => {

@@ -2,13 +2,13 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 
 import { Providers } from '@/components/providers'
-import './globals.css'
+import '@/styles/main.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Base Farcaster MiniApp Template',
-  description: 'A template for building mini-apps on Farcaster and Base',
+  title: 'Base Fishing',
+  description: 'The ultimate fishing experience on Base and Farcaster',
 }
 
 export default function RootLayout({

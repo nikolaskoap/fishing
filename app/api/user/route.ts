@@ -1,5 +1,6 @@
 import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
+import { generateBucket, BOAT_CONFIG } from '@/services/mining.service'
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
@@ -10,21 +11,43 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const userData = await redis.hgetall(`user:${fid}`)
+        const userData: any = await redis.hgetall(`user:${fid}`)
         const invitees = await redis.smembers(`user:${fid}:invitees`)
 
         if (!userData) {
-            // Default new user
             return NextResponse.json({
                 minedFish: 0,
                 rodLevel: 1,
                 lastSeen: Date.now(),
-                spinTickets: 1, // Bonus 1 ticket for new user
+                spinTickets: 1,
                 lastDailySpin: 0,
                 referralCount: 0,
                 invitees: [],
                 activeBoatLevel: 0,
-                boosterExpiry: 0
+                boosterExpiry: 0,
+                canFishBalance: 0
+            })
+        }
+
+        // Backend Driven: Check if hour has passed to refresh bucket
+        const now = Date.now()
+        const hourStart = parseInt(userData.hourStart || "0")
+        const boatLevel = parseInt(userData.activeBoatLevel || "0")
+        const config = BOAT_CONFIG[boatLevel]
+
+        if (now - hourStart >= 3600000 && boatLevel > 0) {
+            const newBucket = generateBucket(config.fishPerHour)
+            userData.distributionBucket = JSON.stringify(newBucket)
+            userData.currentIndex = "0"
+            userData.hourStart = now.toString()
+            userData.fishEarnedThisHour = "0"
+
+            // Persist the new bucket immediately
+            await redis.hset(`user:${fid}`, {
+                distributionBucket: userData.distributionBucket,
+                currentIndex: "0",
+                hourStart: userData.hourStart,
+                fishEarnedThisHour: "0"
             })
         }
 
@@ -41,7 +64,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
-        const { fid, minedFish, rodLevel, activeBoatLevel, boosterExpiry, walletAddress, xp, spinTickets, lastDailySpin, referralCount, referrerFid } = body
+        const { fid, minedFish, canFishBalance, rodLevel, activeBoatLevel, boosterExpiry, walletAddress, xp, spinTickets, lastDailySpin, referralCount, referrerFid } = body
 
         if (!fid) {
             return NextResponse.json({ error: 'Missing FID' }, { status: 400 })
@@ -49,27 +72,20 @@ export async function POST(req: NextRequest) {
 
         // Referral Logic Integration
         if (referrerFid && referrerFid !== fid) {
-            // Check if this user was already referred or is already in the system
             const alreadyExists = await redis.exists(`user:${fid}`)
             const alreadyReferred = await redis.get(`user:${fid}:referred_by`)
 
             if (!alreadyExists && !alreadyReferred) {
-                // First time this user is seen and they have a referrer
                 await redis.set(`user:${fid}:referred_by`, referrerFid)
-
-                // Increment referrer's count
                 await redis.hincrby(`user:${referrerFid}`, 'referralCount', 1)
-
-                // Track WHO they invited
                 await redis.sadd(`user:${referrerFid}:invitees`, fid)
-
-                console.log(`User ${fid} referred by ${referrerFid}`)
             }
         }
 
-        // Save to Redis
+        // Save to Redis (Limited fields allowed via POST from frontend)
         const dataToSave = {
             minedFish,
+            canFishBalance: canFishBalance || 0,
             rodLevel,
             xp: xp || 0,
             activeBoatLevel: activeBoatLevel || 0,
