@@ -9,7 +9,7 @@ import { SpinMenu } from '@/components/Home/SpinMenu'
 import { useFrame } from '@/components/farcaster-provider'
 import { useAccount, useWriteContract } from 'wagmi'
 import { parseUnits } from 'viem'
-import { USDT_ADDRESS, PAYMENT_RECIPIENT, ERC20_ABI } from "@/services/lib/contracts";
+import { USDT_ADDRESS, PAYMENT_RECIPIENT, ERC20_ABI } from "@/lib/contracts";
 import MiningController, { FishCatch, FishRarity } from '@/components/Fishing/MiningController';
 import BoosterPanel from '@/components/Fishing/BoosterPanel';
 import GlobalStats from '@/components/Home/GlobalStats';
@@ -89,14 +89,6 @@ export default function MainGameScreen() {
     localStorage.setItem('bf_volume', volumeOn.toString())
     localStorage.setItem('bf_announce', announceOn.toString())
   }, [volumeOn, announceOn])
-
-  const handleCatch = useCallback((catchData: FishCatch) => {
-    setMinedFish(prev => prev + catchData.value)
-    setXp(prev => prev + 25)
-    if (announceOn) {
-      console.log(`Caught ${catchData.rarity}! +${catchData.value} fish`)
-    }
-  }, [announceOn])
 
   // Swap & Spin Menus
   const [isSwapOpen, setIsSwapOpen] = useState(false)

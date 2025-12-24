@@ -1,4 +1,4 @@
-import { redis } from '@/services/lib/redis'
+import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateBucket, BOAT_CONFIG } from '@/services/mining.service'
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdmin, COOKIE_NAME } from '@/lib/admin-auth'
+import { verifyAdmin, COOKIE_NAME } from '../../../../lib/admin-auth'
 
 export async function POST(req: NextRequest) {
     try {

@@ -1,6 +1,7 @@
-import { redis } from '@/services/lib/redis'
+import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
 import { BOAT_CONFIG, FISH_VALUE } from '@/services/mining.service'
+import { FishRarity } from '@/components/Fishing/MiningController'
 
 export async function POST(req: NextRequest) {
     try {
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Bucket Logic
-        let bucket = []
+        let bucket: FishRarity[] = []
         try {
             bucket = JSON.parse(userData.distributionBucket || "[]")
         } catch (e) { bucket = [] }
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Pop fish from index
-        const fishType = bucket[index]
+        const fishType = bucket[index] as FishRarity
         const fishValue = FISH_VALUE[fishType] || 1
 
         // 3. Update State
