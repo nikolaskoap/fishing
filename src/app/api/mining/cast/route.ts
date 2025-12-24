@@ -60,12 +60,10 @@ export async function POST(req: NextRequest) {
 
         // 3. Update State
         const newMinedFish = parseFloat(userData.minedFish || "0") + fishValue
-        const newCanFish = parseFloat(userData.canFishBalance || "0") + fishValue
         const newXp = parseInt(userData.xp || "0") + 25 // 25 XP per catch
 
         await redis.hset(`user:${fid}`, {
             minedFish: newMinedFish.toString(),
-            canFishBalance: newCanFish.toString(),
             xp: newXp.toString(),
             currentIndex: (index + 1).toString(),
             lastCastTimestamp: now.toString(),

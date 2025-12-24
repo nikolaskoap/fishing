@@ -26,6 +26,7 @@ export default function MainGameScreen() {
 
   // Mining & Boat State
   const [minedFish, setMinedFish] = useState(0)
+  const [canFishBalance, setCanFishBalance] = useState(0)
   const [onlineMiners, setOnlineMiners] = useState(1)
   const [rodLevel, setRodLevel] = useState(1) // Legacy rod
   const [activeBoatLevel, setActiveBoatLevel] = useState(0)
@@ -106,6 +107,7 @@ export default function MainGameScreen() {
 
         if (data && !data.error) {
           const savedFish = parseFloat(data.minedFish || '0')
+          const savedCanFish = parseFloat(data.canFishBalance || '0')
           const savedRod = parseInt(data.rodLevel || '1')
           const savedBoat = parseInt(data.activeBoatLevel || '0')
           const savedBooster = parseInt(data.boosterExpiry || '0')
@@ -137,6 +139,7 @@ export default function MainGameScreen() {
           if (savedRefs >= 3) setHasClaimed3Ref(true)
 
           setMinedFish(savedFish)
+          setCanFishBalance(savedCanFish)
         }
       } catch (e) { console.error("Load error", e) }
     }
@@ -295,9 +298,21 @@ export default function MainGameScreen() {
     }
   }
 
-  const handleCatchFish = (amount: number, xpGained: number) => {
-    setMinedFish(prev => prev + amount)
-    setXp(prev => prev + xpGained)
+  const handleConvert = async (amount: number) => {
+    if (!fid) return
+    try {
+      const result = await api.convert(fid, amount)
+      if (result.success) {
+        setMinedFish(result.minedFish)
+        setCanFishBalance(result.canFishBalance)
+        console.log(`Successfully converted ${amount} Fish`)
+      } else {
+        alert("Conversion failed: " + result.error)
+      }
+    } catch (e) {
+      console.error("Conversion error", e)
+      alert("Error during conversion")
+    }
   }
 
   // Calculate current effective rate
@@ -385,7 +400,7 @@ export default function MainGameScreen() {
         <div className="bg-[#0f172a]/60 p-4 rounded-2xl border border-white/5 text-right shadow-inner">
           <p className="text-[10px] font-black uppercase tracking-widest text-[#4ADE80] opacity-60">CAN Fish</p>
           <p className="text-2xl font-mono font-black text-[#4ADE80] drop-shadow-[0_0_10px_rgba(74,222,128,0.2)]">
-            {(minedFish * 0.05).toFixed(3)}
+            {canFishBalance.toFixed(3)}
           </p>
         </div>
 
@@ -464,10 +479,7 @@ export default function MainGameScreen() {
         isOpen={isConvertOpen}
         onClose={() => setIsConvertOpen(false)}
         fishBalance={minedFish}
-        onConvert={(amount) => {
-          setMinedFish(0); // Reset Fish after conversion
-          console.log(`Converted ${amount} Fish`);
-        }}
+        onConvert={handleConvert}
       />
 
       <SwapMenu

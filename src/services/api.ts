@@ -36,5 +36,14 @@ export const api = {
             })
         })
         return res.json()
+    },
+
+    async convert(fid: number, amount: number) {
+        const res = await fetch('/api/mining/convert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fid, amount })
+        })
+        return res.json()
     }
 }
