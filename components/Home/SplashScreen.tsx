@@ -15,19 +15,19 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
     }, [onFinish])
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#000814] overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#075985] overflow-hidden">
             {/* Ripple/Wave Background Effect */}
             <div className="absolute inset-0 z-0">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] opacity-20">
-                    <div className="w-full h-full animate-[ripple_10s_linear_infinite] rounded-full border border-cyan-500/30"></div>
-                    <div className="absolute inset-0 w-full h-full animate-[ripple_10s_linear_infinite_2s] rounded-full border border-blue-500/20 scale-75"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] opacity-30">
+                    <div className="w-full h-full animate-[ripple_10s_linear_infinite] rounded-full border border-cyan-400/40"></div>
+                    <div className="absolute inset-0 w-full h-full animate-[ripple_10s_linear_infinite_2s] rounded-full border border-sky-400/30 scale-75"></div>
                 </div>
             </div>
 
             {/* Logo Container */}
             <div className={`relative z-10 transition-all duration-1000 ${isAnimating ? 'opacity-100 scale-110' : 'opacity-0 scale-90'}`}>
                 <div className="flex flex-col items-center space-y-4">
-                    <div className="relative w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-3xl flex items-center justify-center shadow-[0_0_50px_rgba(34,211,238,0.4)] overflow-hidden">
+                    <div className="relative w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-cyan-300 to-sky-500 rounded-[2rem] flex items-center justify-center shadow-[0_0_80px_rgba(34,211,238,0.6)] overflow-hidden border-2 border-white/20">
                         <span className="text-4xl md:text-6xl">🎣</span>
                         <div className="absolute inset-0 bg-white/10 animate-[wave_3s_ease-in-out_infinite]"></div>
                     </div>

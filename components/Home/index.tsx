@@ -366,9 +366,8 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
   const { total } = getMiningStats()
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-start py-6 space-y-6 bg-[#000814]">
-
-      {/* Anti-Abuse Mining Controller (Headless) */}
+    <div className="flex min-h-screen flex-col bg-[#075985] text-white overflow-hidden font-sans">
+      {/* Headless Controller */}
       <MiningController
         fishCapPerHour={fishCap}
         speedMultiplier={Date.now() < boosterExpiry ? 1.05 : 1.0}
@@ -381,6 +380,123 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
         onCatch={handleCatch}
         isActive={true}
       />
+
+      {/* TOP NAVBAR */}
+      <div className="flex items-center justify-between p-4 bg-[#0c4a6e]/80 backdrop-blur-md border-b border-white/10 z-50">
+        <div className="flex items-center gap-3">
+          <button className="text-2xl opacity-80">☰</button>
+          <button onClick={() => setIsSwapOpen(true)} className="p-2 bg-white/10 rounded-lg">⚙️</button>
+          <button
+            onClick={() => setVolumeOn(!volumeOn)}
+            className={`p-2 rounded-lg transition-all ${volumeOn ? 'bg-sky-400/20 text-sky-300' : 'bg-white/5 opacity-40'}`}
+          >
+            {volumeOn ? '🔊' : '🔇'}
+          </button>
+          <button
+            onClick={() => setAnnounceOn(!announceOn)}
+            className={`p-2 rounded-lg transition-all ${announceOn ? 'bg-orange-400/20 text-orange-300' : 'bg-white/5 opacity-40'}`}
+          >
+            {announceOn ? '📢' : '🔇'}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full border border-white/10">
+          <div className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-[10px] font-bold">⚡</div>
+          <span className="text-xs font-mono opacity-80">
+            {address ? `${address.slice(0, 4)}...${address.slice(-4)}` : 'DISCONNECTED'}
+          </span>
+        </div>
+      </div>
+
+      {/* BALANCE SECTION */}
+      <div className="p-4 grid grid-cols-2 gap-4 relative">
+        {/* Unprocessed */}
+        <div className="bg-[#0f172a]/60 p-4 rounded-2xl border border-white/5">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#FDE047] opacity-80">Unprocessed</p>
+          <p className="text-2xl font-mono font-black text-[#FDE047] drop-shadow-[0_0_10px_rgba(253,224,71,0.3)]">
+            {minedFish.toFixed(3)}
+          </p>
+        </div>
+
+        {/* Processed */}
+        <div className="bg-[#0f172a]/60 p-4 rounded-2xl border border-white/5 text-right">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#4ADE80] opacity-80">Processed</p>
+          <p className="text-2xl font-mono font-black text-[#4ADE80] drop-shadow-[0_0_10px_rgba(74,222,128,0.3)]">
+            {(minedFish * 0.05).toFixed(3)}
+          </p>
+        </div>
+
+        {/* Process Button (Center Overlap) */}
+        <button
+          onClick={() => setIsSwapOpen(true)}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#22C55E] hover:bg-[#16A34A] px-4 py-2 rounded-xl font-black text-xs uppercase tracking-tighter border-2 border-[#14532D] shadow-[0_4px_0_#14532D] active:translate-y-1 active:shadow-none transition-all"
+        >
+          Process ➔
+        </button>
+      </div>
+
+      {/* USDC SUB-BALANCE */}
+      <div className="px-4 pb-2">
+        <div className="bg-[#1e293b]/80 p-3 rounded-xl border border-white/5 inline-flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold shadow-inner">S</div>
+          <div>
+            <p className="text-[8px] font-bold opacity-50 uppercase leading-none mb-1">$USDC.s</p>
+            <p className="text-sm font-black font-mono leading-none">0.052</p>
+          </div>
+        </div>
+      </div>
+
+      {/* CENTRAL GAME AREA */}
+      <div className="flex-1 relative mx-4 mb-4 rounded-[2.5rem] border-4 border-[#0c4a6e] bg-hex-pattern overflow-hidden shadow-2xl">
+        <FishingGame
+          activeBoatLevel={activeBoatLevel}
+          currentRate={total}
+          isMuted={!volumeOn}
+        />
+
+        {/* Floating Rod Card */}
+        <div className="absolute top-6 left-6 z-40 bg-[#1e293b]/90 backdrop-blur-md p-4 rounded-[2rem] border-2 border-white/10 w-48 shadow-2xl">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="w-12 h-12 rounded-full bg-[#0ea5e9]/20 border-2 border-[#0ea5e9]/50 flex items-center justify-center text-2xl">🎣</div>
+            <div>
+              <p className="text-[10px] font-black opacity-50 uppercase">Rod</p>
+              <p className="text-sm font-black">Level {rodLevel}</p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[8px] font-bold opacity-50 uppercase">Durability</p>
+            <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+              <div className="h-full bg-green-500 w-[80%] shadow-[0_0_10px_#22C55E]"></div>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between opacity-80">
+            <span className="text-[10px] font-bold uppercase">Supercast</span>
+            <span className="flex items-center gap-1 font-mono font-bold text-sky-400">
+              ⚡ {spinTickets}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* BOTTOM ACTION BAR */}
+      <div className="px-4 pb-8 pt-2 grid grid-cols-2 gap-4 bg-gradient-to-t from-black/20 to-transparent">
+        <button
+          className="group relative bg-[#FDE047] hover:bg-[#FACC15] p-6 rounded-[2rem] border-b-8 border-[#A16207] shadow-xl active:border-b-0 active:translate-y-2 transition-all flex flex-col items-center justify-center gap-1 overflow-hidden"
+        >
+          <span className="text-2xl relative z-10 transition-transform group-active:scale-90">🎬</span>
+          <span className="font-black text-black text-lg tracking-tighter relative z-10">AUTO-CAST</span>
+          <div className="absolute right-2 bottom-2 text-4xl opacity-10 rotate-12 group-hover:scale-125 transition-all">🎣</div>
+        </button>
+
+        <button
+          onClick={() => setIsSpinOpen(true)}
+          className="group relative bg-[#A855F7] hover:bg-[#9333EA] p-6 rounded-[2rem] border-b-8 border-[#581C87] shadow-xl active:border-b-0 active:translate-y-2 transition-all flex flex-col items-center justify-center gap-1"
+        >
+          <span className="text-2xl relative z-10 ⚡ transition-transform group-active:scale-90">⚡</span>
+          <span className="font-black text-white text-lg tracking-tighter relative z-10 uppercase">Super-Cast</span>
+          <div className="absolute right-4 top-4 bg-black/20 px-2 py-1 rounded-full text-[10px] font-mono font-bold">{spinTickets}</div>
+        </button>
+      </div>
 
       <SwapMenu
         isOpen={isSwapOpen}
@@ -397,70 +513,6 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
         nextDailySpin={lastDailySpin + (24 * 3600 * 1000)}
         onSpinSuccess={handleSpinWin}
       />
-
-      {/* NEW Header with Toggles */}
-      <div className="w-full max-w-md px-4 flex justify-between items-center bg-[#001226]/50 p-2 rounded-2xl border border-white/5 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center text-sm">🎣</div>
-          <span className="font-black text-xs tracking-tighter">BASE FISHING</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setVolumeOn(!volumeOn)}
-            className={`p-2 rounded-xl transition-all ${volumeOn ? 'text-cyan-400 bg-cyan-400/10' : 'text-gray-600 bg-white/5'}`}
-          >
-            {volumeOn ? '🔊' : '🔇'}
-          </button>
-          <button
-            onClick={() => setAnnounceOn(!announceOn)}
-            className={`p-2 rounded-xl transition-all ${announceOn ? 'text-purple-400 bg-purple-400/10' : 'text-gray-600 bg-white/5'}`}
-          >
-            {announceOn ? '🔔' : '🔕'}
-          </button>
-          <button className="p-2 text-gray-400 hover:text-white transition-colors">⋮</button>
-        </div>
-      </div>
-
-      {/* Balance Bar */}
-      <div className="w-full max-w-md px-4 pt-2">
-        <div className="bg-[#001226]/90 p-4 rounded-[2rem] border border-white/5 flex justify-between items-center shadow-2xl backdrop-blur-xl">
-          <div>
-            <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest pl-1">Can Fish Balance</p>
-            <div className="flex items-baseline gap-1">
-              <p className="text-3xl font-mono text-cyan-400 font-bold">{minedFish.toFixed(2)}</p>
-              <span className="text-[10px] text-cyan-800 font-bold uppercase">Fish</span>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => setIsSwapOpen(true)} className="w-12 h-12 flex items-center justify-center bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/40 rounded-2xl transition-all">💸</button>
-            <button onClick={() => setIsSpinOpen(true)} className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all border ${canSpinDaily ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/40'}`}>🎡</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Game Screen */}
-      <div className="w-full max-w-md px-4 flex gap-4">
-        {/* Left Side: Auto Caster */}
-        <div className="flex-1 bg-black/20 rounded-[2.5rem] border border-white/5 relative overflow-hidden min-h-[350px]">
-          <FishingGame
-            activeBoatLevel={activeBoatLevel}
-            currentRate={total}
-            isMuted={!volumeOn}
-          />
-        </div>
-
-        {/* Right Side: Boosters */}
-        <div className="w-24 flex flex-col gap-2">
-          <BoosterPanel
-            onBuyBooster={(type) => handleBuyBooster()} // Simplified for now
-            isBoosterActive={Date.now() < boosterExpiry}
-            isTurboActive={false}
-          />
-        </div>
-      </div>
-
-      <GlobalStats />
-
     </div>
   )
 
