@@ -11,8 +11,11 @@ import { useFrame } from '@/components/farcaster-provider'
 import { useAccount, useWriteContract } from 'wagmi'
 import { parseUnits } from 'viem'
 import { USDT_ADDRESS, PAYMENT_RECIPIENT, ERC20_ABI } from "@/lib/contracts";
+import MiningController, { FishCatch } from '../Fishing/MiningController';
+import BoosterPanel from '../Fishing/BoosterPanel';
+import GlobalStats from './GlobalStats';
 
-export function Demo() {
+export function Demo({ initialBoat }: { initialBoat?: any }) {
   const { context } = useFrame()
   const { address } = useAccount()
   const fid = context?.user.fid
@@ -21,11 +24,16 @@ export function Demo() {
   const [minedFish, setMinedFish] = useState(0)
   const [onlineMiners, setOnlineMiners] = useState(1)
   const [rodLevel, setRodLevel] = useState(1) // Legacy rod
-  const [activeBoatLevel, setActiveBoatLevel] = useState(0) // 0: None, 1: $10, 2: $20, 3: $50
+  const [activeBoatLevel, setActiveBoatLevel] = useState(initialBoat?.id === 'free' ? 0 : (initialBoat?.price === 10 ? 1 : initialBoat?.price === 20 ? 2 : initialBoat?.price === 50 ? 3 : 0))
+  const [fishCap, setFishCap] = useState(initialBoat?.rate || 0)
   const [boosterExpiry, setBoosterExpiry] = useState(0) // Timestamp
   const [xp, setXp] = useState(0)
   const [spinTickets, setSpinTickets] = useState(0)
   const [lastDailySpin, setLastDailySpin] = useState(0)
+
+  // Settings
+  const [volumeOn, setVolumeOn] = useState(true)
+  const [announceOn, setAnnounceOn] = useState(true)
 
   // Referral State
   const [referralCount, setReferralCount] = useState(0)
@@ -56,6 +64,27 @@ export function Demo() {
     boosterRef.current = boosterExpiry
     xpRef.current = xp
   }, [minedFish, activeBoatLevel, boosterExpiry, xp])
+
+  // Settings Persistence
+  useEffect(() => {
+    const vol = localStorage.getItem('bf_volume')
+    const ann = localStorage.getItem('bf_announce')
+    if (vol !== null) setVolumeOn(vol === 'true')
+    if (ann !== null) setAnnounceOn(ann === 'true')
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('bf_volume', volumeOn.toString())
+    localStorage.setItem('bf_announce', announceOn.toString())
+  }, [volumeOn, announceOn])
+
+  const handleCatch = useCallback((catchData: FishCatch) => {
+    setMinedFish(prev => prev + catchData.value)
+    setXp(prev => prev + 25)
+    if (announceOn) {
+      console.log(`Caught ${catchData.rarity}! +${catchData.value} fish`)
+    }
+  }, [announceOn])
 
   // Swap & Spin Menus
   const [isSwapOpen, setIsSwapOpen] = useState(false)
@@ -315,6 +344,14 @@ export function Demo() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-start py-6 space-y-6 bg-[#000814]">
 
+      {/* Anti-Abuse Mining Controller (Headless) */}
+      <MiningController
+        fishCapPerHour={fishCap}
+        speedMultiplier={Date.now() < boosterExpiry ? 1.05 : 1.0} // Simulation of booster effect on speed
+        onCatch={handleCatch}
+        isActive={true}
+      />
+
       <SwapMenu
         isOpen={isSwapOpen}
         onClose={() => setIsSwapOpen(false)}
@@ -331,103 +368,71 @@ export function Demo() {
         onSpinSuccess={handleSpinWin}
       />
 
-      {/* Game Header */}
-      <div className="w-full max-w-md px-4 text-center space-y-1">
-        <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 tracking-tighter drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-          CYBER FISHING
-        </h1>
-        <p className="text-xs text-[#A3B3C2] uppercase tracking-[0.2em] animate-pulse">
-          S1: ABYSSAL WATERS
-        </p>
+      {/* NEW Header with Toggles */}
+      <div className="w-full max-w-md px-4 flex justify-between items-center bg-[#001226]/50 p-2 rounded-2xl border border-white/5 backdrop-blur-md">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center text-sm">🎣</div>
+          <span className="font-black text-xs tracking-tighter">BASE FISHING</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setVolumeOn(!volumeOn)}
+            className={`p-2 rounded-xl transition-all ${volumeOn ? 'text-cyan-400 bg-cyan-400/10' : 'text-gray-600 bg-white/5'}`}
+          >
+            {volumeOn ? '🔊' : '🔇'}
+          </button>
+          <button
+            onClick={() => setAnnounceOn(!announceOn)}
+            className={`p-2 rounded-xl transition-all ${announceOn ? 'text-purple-400 bg-purple-400/10' : 'text-gray-600 bg-white/5'}`}
+          >
+            {announceOn ? '🔔' : '🔕'}
+          </button>
+          <button className="p-2 text-gray-400 hover:text-white transition-colors">⋮</button>
+        </div>
       </div>
 
       {/* Balance Bar */}
-      <div className="w-full max-w-md px-4">
-        <div className="bg-[#001226]/90 p-3 rounded-2xl border border-white/5 flex justify-between items-center shadow-2xl backdrop-blur-xl">
+      <div className="w-full max-w-md px-4 pt-2">
+        <div className="bg-[#001226]/90 p-4 rounded-[2rem] border border-white/5 flex justify-between items-center shadow-2xl backdrop-blur-xl">
           <div>
-            <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest pl-1">Total Mined</p>
+            <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest pl-1">Can Fish Balance</p>
             <div className="flex items-baseline gap-1">
-              <p className="text-2xl font-mono text-cyan-400 font-bold">{minedFish.toFixed(4)}</p>
-              <span className="text-[10px] text-cyan-800">FISH</span>
+              <p className="text-3xl font-mono text-cyan-400 font-bold">{minedFish.toFixed(2)}</p>
+              <span className="text-[10px] text-cyan-800 font-bold uppercase">Fish</span>
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setIsSwapOpen(true)} className="px-4 py-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/40 rounded-xl text-xs font-bold font-mono uppercase transition-all">Swap</button>
-            <button onClick={() => setIsSpinOpen(true)} className={`px-4 py-2 rounded-xl text-xs font-bold font-mono uppercase transition-all border ${canSpinDaily ? 'bg-yellow-500 text-black border-yellow-400 animate-pulse' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/40'}`}>Spin</button>
+            <button onClick={() => setIsSwapOpen(true)} className="w-12 h-12 flex items-center justify-center bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/40 rounded-2xl transition-all">💸</button>
+            <button onClick={() => setIsSpinOpen(true)} className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all border ${canSpinDaily ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/40'}`}>🎡</button>
           </div>
         </div>
       </div>
 
-      {/* Main Game Canvas */}
-      <div className="w-full">
-        <FishingGame
-          activeBoatLevel={activeBoatLevel}
-          currentRate={total}
-          onCatch={handleCatchFish}
-          onSelectBoat={handleSelectBoat}
-          onBuyBooster={handleBuyBooster}
-        />
-      </div>
-
-      {/* Dashboard/Tools and Referrals */}
-      <div className="w-full max-w-md px-4 space-y-4">
-
-        {/* Referrals Section - ENHANCED */}
-        <div className="p-4 rounded-xl bg-[#001226]/50 border border-purple-500/20">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-bold text-purple-400 uppercase tracking-wider">Referrals</h3>
-            <span className="text-xl font-mono text-white">{referralCount}</span>
-          </div>
-
-          <div className="space-y-2 text-[10px] text-gray-400 mb-4">
-            <p className={referralCount >= 3 ? 'text-green-400' : ''}>• 3 Friends = 1 Free Ticket {hasClaimed3Ref && '✅'}</p>
-            <p className={referralCount >= 100 ? 'text-green-400' : ''}>• 100 Friends = Mining Booster {referralCount >= 100 && '🚀'}</p>
-          </div>
-
-          <div className="bg-black/40 p-2 rounded border border-white/10 mb-3 overflow-hidden">
-            <p className="text-[8px] text-gray-500 uppercase mb-1">Your Invite Link:</p>
-            <p className="text-[10px] font-mono text-purple-300 break-all select-all">
-              {typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}/?ref=${fid}` : ''}
-            </p>
-          </div>
-
-          <div className="mt-4 border-t border-white/5 pt-3">
-            <p className="text-[8px] text-gray-500 uppercase mb-2 flex justify-between">
-              <span>Invited Users ({invitees.length})</span>
-              <span className="text-purple-400/50">Linked Status</span>
-            </p>
-            <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
-              {invitees.length > 0 ? (
-                invitees.map((inviteeId) => (
-                  <div key={inviteeId} className="flex justify-between items-center p-2 bg-purple-500/5 border border-purple-500/10 rounded">
-                    <span className="text-[10px] text-purple-200 font-mono">FID: {inviteeId}</span>
-                    <span className="text-[10px] text-green-500/50 font-bold uppercase tracking-tighter">Active</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-[10px] text-gray-600 italic text-center py-2">No friends invited yet.</p>
-              )}
-            </div>
-          </div>
+      {/* Main Game Screen */}
+      <div className="w-full max-w-md px-4 flex gap-4">
+        {/* Left Side: Auto Caster */}
+        <div className="flex-1 bg-black/20 rounded-[2.5rem] border border-white/5 relative overflow-hidden min-h-[350px]">
+          <FishingGame
+            activeBoatLevel={activeBoatLevel}
+            currentRate={total}
+            isMuted={!volumeOn}
+          />
         </div>
 
-        <div className="p-4 rounded-xl bg-[#001226]/50 border border-[#0A5CDD]/20">
-          <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">Player Control</h3>
-          <WalletActions />
+        {/* Right Side: Boosters */}
+        <div className="w-24 flex flex-col gap-2">
+          <BoosterPanel
+            onBuyBooster={(type) => handleBuyBooster()} // Simplified for now
+            isBoosterActive={Date.now() < boosterExpiry}
+            isTurboActive={false}
+          />
         </div>
       </div>
 
-      {/* Shop Section */}
-      <div className="w-full max-w-md px-4">
-        {currentLevel < 5 ? (
-          <div className="p-6 text-center opacity-50 grayscale pb-20">
-            <p className="text-gray-500 text-sm">Shop is locked until Level 5</p>
-          </div>
-        ) : (
-          <BoatShop currentLevel={rodLevel} onPurchaseSuccess={handleLevelUp} />
-        )}
-      </div>
+      <GlobalStats />
+
     </div>
   )
+
 }
 
