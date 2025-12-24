@@ -1,7 +1,6 @@
 'use client'
 
-
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { BoatShop } from '@/components/Shop/BoatShop'
 import { WalletActions } from '@/components/Home/WalletActions'
 import { FishingGame } from '../Fishing/FishingGame'
@@ -11,7 +10,7 @@ import { useFrame } from '@/components/farcaster-provider'
 import { useAccount, useWriteContract } from 'wagmi'
 import { parseUnits } from 'viem'
 import { USDT_ADDRESS, PAYMENT_RECIPIENT, ERC20_ABI } from "@/lib/contracts";
-import MiningController, { FishCatch } from '../Fishing/MiningController';
+import MiningController, { FishCatch, FishRarity } from '../Fishing/MiningController';
 import BoosterPanel from '../Fishing/BoosterPanel';
 import GlobalStats from './GlobalStats';
 
@@ -30,6 +29,12 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
   const [xp, setXp] = useState(0)
   const [spinTickets, setSpinTickets] = useState(0)
   const [lastDailySpin, setLastDailySpin] = useState(0)
+
+  // Bucket Persistence
+  const [distributionBucket, setDistributionBucket] = useState<FishRarity[]>([])
+  const [bucketIndex, setBucketIndex] = useState(0)
+  const bucketRef = useRef<FishRarity[]>([])
+  const indexRef = useRef(0)
 
   // Settings
   const [volumeOn, setVolumeOn] = useState(true)
@@ -63,7 +68,9 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
     boatRef.current = activeBoatLevel
     boosterRef.current = boosterExpiry
     xpRef.current = xp
-  }, [minedFish, activeBoatLevel, boosterExpiry, xp])
+    bucketRef.current = distributionBucket
+    indexRef.current = bucketIndex
+  }, [minedFish, activeBoatLevel, boosterExpiry, xp, distributionBucket, bucketIndex])
 
   // Settings Persistence
   useEffect(() => {
@@ -110,10 +117,19 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
           const savedRefs = parseInt(data.referralCount || '0')
           const savedInvitees = data.invitees || []
           const savedLastSeen = parseInt(data.lastSeen || Date.now().toString())
+          const savedBucketRaw = data.distributionBucket
+          const savedIndex = parseInt(data.currentIndex || '0')
 
           setRodLevel(savedRod)
-          setActiveBoatLevel(prev => savedBoat || prev)
-          setFishCap(prev => {
+          if (savedBucketRaw) {
+            try {
+              const parsed = JSON.parse(savedBucketRaw)
+              setDistributionBucket(parsed)
+              setBucketIndex(savedIndex)
+            } catch (e) { console.error("Bucket parse error", e) }
+          }
+          setActiveBoatLevel((prev: number) => savedBoat || prev)
+          setFishCap((prev: number) => {
             if (savedBoat === 1) return 10
             if (savedBoat === 2) return 25
             if (savedBoat === 3) return 60
@@ -187,7 +203,9 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
             spinTickets: spinTickets,
             lastDailySpin: lastDailySpin,
             referralCount: referralCount,
-            walletAddress: address
+            walletAddress: address,
+            distributionBucket: bucketRef.current,
+            currentIndex: indexRef.current
           })
         })
         console.log("Auto-saved to Redis")
@@ -353,7 +371,13 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
       {/* Anti-Abuse Mining Controller (Headless) */}
       <MiningController
         fishCapPerHour={fishCap}
-        speedMultiplier={Date.now() < boosterExpiry ? 1.05 : 1.0} // Simulation of booster effect on speed
+        speedMultiplier={Date.now() < boosterExpiry ? 1.05 : 1.0}
+        initialBucket={distributionBucket}
+        initialIndex={bucketIndex}
+        onProgressUpdate={(b, i) => {
+          setDistributionBucket(b)
+          setBucketIndex(i)
+        }}
         onCatch={handleCatch}
         isActive={true}
       />

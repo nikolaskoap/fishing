@@ -23,16 +23,22 @@ interface MiningControllerProps {
     speedMultiplier: number
     onCatch: (catchData: FishCatch) => void
     isActive: boolean
+    initialBucket?: FishRarity[]
+    initialIndex?: number
+    onProgressUpdate?: (bucket: FishRarity[], index: number) => void
 }
 
 export default function MiningController({
     fishCapPerHour,
     speedMultiplier,
     onCatch,
-    isActive
+    isActive,
+    initialBucket = [],
+    initialIndex = 0,
+    onProgressUpdate
 }: MiningControllerProps) {
-    const [bucket, setBucket] = useState<FishRarity[]>([])
-    const [currentIndex, setCurrentIndex] = useState(0)
+    const [bucket, setBucket] = useState<FishRarity[]>(initialBucket)
+    const [currentIndex, setCurrentIndex] = useState(initialIndex)
     const [hourStart, setHourStart] = useState(Date.now())
 
     // Core Bucket Generation Logic (Anti-Abuse)
@@ -67,6 +73,7 @@ export default function MiningController({
             setBucket(newBucket)
             setCurrentIndex(0)
             setHourStart(now - (now % 3600000)) // Snap to start of hour
+            if (onProgressUpdate) onProgressUpdate(newBucket, 0)
         }
     }, [hourStart, fishCapPerHour, generateBucket, bucket.length])
 
@@ -86,7 +93,9 @@ export default function MiningController({
                 value: FISH_VALUES[rarity],
                 timestamp: Date.now()
             })
-            setCurrentIndex(prev => prev + 1)
+            const nextIndex = currentIndex + 1
+            setCurrentIndex(nextIndex)
+            if (onProgressUpdate) onProgressUpdate(bucket, nextIndex)
         }, interval)
 
         return () => clearTimeout(timeout)
