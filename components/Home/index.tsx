@@ -13,6 +13,8 @@ import { USDT_ADDRESS, PAYMENT_RECIPIENT, ERC20_ABI } from "@/lib/contracts";
 import MiningController, { FishCatch, FishRarity } from '../Fishing/MiningController';
 import BoosterPanel from '../Fishing/BoosterPanel';
 import GlobalStats from './GlobalStats';
+import { MenuDrawer } from './MenuDrawer';
+import { ConvertMenu } from './ConvertMenu';
 
 export function Demo({ initialBoat }: { initialBoat?: any }) {
   const { context } = useFrame()
@@ -96,6 +98,8 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
   // Swap & Spin Menus
   const [isSwapOpen, setIsSwapOpen] = useState(false)
   const [isSpinOpen, setIsSpinOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isConvertOpen, setIsConvertOpen] = useState(false)
 
   // 1. Load Data on Mount
   useEffect(() => {
@@ -366,7 +370,16 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
   const { total } = getMiningStats()
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#075985] text-white overflow-hidden font-sans">
+    <div className="flex min-h-screen flex-col bg-[#075985] text-white overflow-hidden font-sans w-full max-w-md mx-auto relative">
+      <MenuDrawer
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        onOpenSwap={() => setIsSwapOpen(true)}
+        onOpenSpin={() => setIsSpinOpen(true)}
+        onOpenStats={() => { }} // TODO
+        onOpenInvite={() => { }} // TODO
+      />
+
       {/* Headless Controller */}
       <MiningController
         fishCapPerHour={fishCap}
@@ -382,10 +395,10 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
       />
 
       {/* TOP NAVBAR */}
-      <div className="flex items-center justify-between p-4 bg-[#0c4a6e]/80 backdrop-blur-md border-b border-white/10 z-50">
+      <div className="flex items-center justify-between p-4 bg-[#0c4a6e]/80 backdrop-blur-md border-b border-white/10 z-40">
         <div className="flex items-center gap-3">
-          <button className="text-2xl opacity-80">☰</button>
-          <button onClick={() => setIsSwapOpen(true)} className="p-2 bg-white/10 rounded-lg">⚙️</button>
+          <button onClick={() => setIsMenuOpen(true)} className="text-2xl opacity-80 hover:scale-110 px-2">☰</button>
+          <button onClick={() => setIsSwapOpen(true)} className="p-2 bg-white/10 rounded-lg hidden md:block">⚙️</button>
           <button
             onClick={() => setVolumeOn(!volumeOn)}
             className={`p-2 rounded-lg transition-all ${volumeOn ? 'bg-sky-400/20 text-sky-300' : 'bg-white/5 opacity-40'}`}
@@ -400,47 +413,47 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full border border-white/10">
-          <div className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-[10px] font-bold">⚡</div>
-          <span className="text-xs font-mono opacity-80">
-            {address ? `${address.slice(0, 4)}...${address.slice(-4)}` : 'DISCONNECTED'}
+        <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full border border-white/10 max-w-[120px]">
+          <div className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">⚡</div>
+          <span className="text-[10px] font-mono opacity-80 truncate">
+            {address ? `${address.slice(0, 4)}...${address.slice(-4)}` : 'OFFLINE'}
           </span>
         </div>
       </div>
 
       {/* BALANCE SECTION */}
       <div className="p-4 grid grid-cols-2 gap-4 relative">
-        {/* Unprocessed */}
-        <div className="bg-[#0f172a]/60 p-4 rounded-2xl border border-white/5">
-          <p className="text-[10px] font-black uppercase tracking-widest text-[#FDE047] opacity-80">Unprocessed</p>
-          <p className="text-2xl font-mono font-black text-[#FDE047] drop-shadow-[0_0_10px_rgba(253,224,71,0.3)]">
+        {/* Unprocessed -> Fish */}
+        <div className="bg-[#0f172a]/60 p-4 rounded-2xl border border-white/5 shadow-inner">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#FDE047] opacity-60">Fish</p>
+          <p className="text-2xl font-mono font-black text-[#FDE047] drop-shadow-[0_0_10px_rgba(253,224,71,0.2)]">
             {minedFish.toFixed(3)}
           </p>
         </div>
 
-        {/* Processed */}
-        <div className="bg-[#0f172a]/60 p-4 rounded-2xl border border-white/5 text-right">
-          <p className="text-[10px] font-black uppercase tracking-widest text-[#4ADE80] opacity-80">Processed</p>
-          <p className="text-2xl font-mono font-black text-[#4ADE80] drop-shadow-[0_0_10px_rgba(74,222,128,0.3)]">
+        {/* Processed -> CAN Fish */}
+        <div className="bg-[#0f172a]/60 p-4 rounded-2xl border border-white/5 text-right shadow-inner">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#4ADE80] opacity-60">CAN Fish</p>
+          <p className="text-2xl font-mono font-black text-[#4ADE80] drop-shadow-[0_0_10px_rgba(74,222,128,0.2)]">
             {(minedFish * 0.05).toFixed(3)}
           </p>
         </div>
 
-        {/* Process Button (Center Overlap) */}
+        {/* Convert Button (Center) */}
         <button
-          onClick={() => setIsSwapOpen(true)}
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#22C55E] hover:bg-[#16A34A] px-4 py-2 rounded-xl font-black text-xs uppercase tracking-tighter border-2 border-[#14532D] shadow-[0_4px_0_#14532D] active:translate-y-1 active:shadow-none transition-all"
+          onClick={() => setIsConvertOpen(true)}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#22C55E] hover:bg-[#16A34A] px-4 py-2 rounded-xl font-black text-xs uppercase tracking-tighter border-2 border-[#14532D] shadow-[0_4px_0_#14532D] active:translate-y-1 active:shadow-none transition-all z-10"
         >
-          Process ➔
+          CONVERT ➔
         </button>
       </div>
 
       {/* USDC SUB-BALANCE */}
       <div className="px-4 pb-2">
-        <div className="bg-[#1e293b]/80 p-3 rounded-xl border border-white/5 inline-flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold shadow-inner">S</div>
+        <div className="bg-[#1e293b]/50 p-3 rounded-xl border border-white/5 inline-flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold shadow-inner">USDC</div>
           <div>
-            <p className="text-[8px] font-bold opacity-50 uppercase leading-none mb-1">$USDC.s</p>
+            <p className="text-[8px] font-bold opacity-50 uppercase leading-none mb-1">Staged Fund</p>
             <p className="text-sm font-black font-mono leading-none">0.052</p>
           </div>
         </div>
@@ -454,49 +467,58 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
           isMuted={!volumeOn}
         />
 
-        {/* Floating Rod Card */}
-        <div className="absolute top-6 left-6 z-40 bg-[#1e293b]/90 backdrop-blur-md p-4 rounded-[2rem] border-2 border-white/10 w-48 shadow-2xl">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="w-12 h-12 rounded-full bg-[#0ea5e9]/20 border-2 border-[#0ea5e9]/50 flex items-center justify-center text-2xl">🎣</div>
+        {/* Rod Card (Moved to bottom-left area of the hex pattern) */}
+        <div className="absolute bottom-6 left-6 z-30 bg-[#1e293b]/95 backdrop-blur-md p-4 rounded-[2rem] border-2 border-white/10 w-44 shadow-2xl transition-all">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-[#0ea5e9]/20 border-2 border-[#0ea5e9]/40 flex items-center justify-center text-xl">🎣</div>
             <div>
-              <p className="text-[10px] font-black opacity-50 uppercase">Rod</p>
-              <p className="text-sm font-black">Level {rodLevel}</p>
+              <p className="text-[10px] font-black opacity-30 uppercase">Rod</p>
+              <p className="text-sm font-black italic">Level {rodLevel}</p>
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[8px] font-bold opacity-50 uppercase">Durability</p>
-            <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
-              <div className="h-full bg-green-500 w-[80%] shadow-[0_0_10px_#22C55E]"></div>
+            <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+              <div className="h-full bg-green-500 w-[75%] shadow-[0_0_8px_#22C55E]"></div>
             </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between opacity-80">
-            <span className="text-[10px] font-bold uppercase">Supercast</span>
-            <span className="flex items-center gap-1 font-mono font-bold text-sky-400">
-              ⚡ {spinTickets}
-            </span>
+            <p className="text-[8px] font-bold opacity-30 text-right uppercase">Durability 75%</p>
           </div>
         </div>
       </div>
 
       {/* BOTTOM ACTION BAR */}
-      <div className="px-4 pb-8 pt-2 grid grid-cols-2 gap-4 bg-gradient-to-t from-black/20 to-transparent">
+      <div className="px-4 pb-8 pt-2 grid grid-cols-2 gap-4 bg-gradient-to-t from-[#020617] to-transparent">
         <button
-          className="group relative bg-[#FDE047] hover:bg-[#FACC15] p-6 rounded-[2rem] border-b-8 border-[#A16207] shadow-xl active:border-b-0 active:translate-y-2 transition-all flex flex-col items-center justify-center gap-1 overflow-hidden"
+          className="group relative bg-[#FDE047] hover:bg-[#FACC15] p-6 rounded-[2.5rem] border-b-8 border-[#A16207] shadow-xl active:border-b-0 active:translate-y-2 transition-all flex flex-col items-center justify-center gap-1 overflow-hidden"
         >
-          <span className="text-2xl relative z-10 transition-transform group-active:scale-90">🎬</span>
-          <span className="font-black text-black text-lg tracking-tighter relative z-10">AUTO-CAST</span>
-          <div className="absolute right-2 bottom-2 text-4xl opacity-10 rotate-12 group-hover:scale-125 transition-all">🎣</div>
+          <span className="text-2xl relative z-10 transition-transform group-active:scale-95">⚓</span>
+          <span className="font-black text-black text-sm tracking-tight relative z-10">AUTO-CAST</span>
         </button>
 
         <button
-          onClick={() => setIsSpinOpen(true)}
-          className="group relative bg-[#A855F7] hover:bg-[#9333EA] p-6 rounded-[2rem] border-b-8 border-[#581C87] shadow-xl active:border-b-0 active:translate-y-2 transition-all flex flex-col items-center justify-center gap-1"
+          onClick={() => handleBuyBooster()}
+          className={`group relative p-6 rounded-[2.5rem] border-b-8 transition-all flex flex-col items-center justify-center gap-1
+            ${Date.now() < boosterExpiry
+              ? 'bg-blue-500 border-blue-800 text-white cursor-wait'
+              : 'bg-[#A855F7] hover:bg-[#9333EA] border-[#581C87] shadow-xl active:border-b-0 active:translate-y-2'
+            }`}
         >
-          <span className="text-2xl relative z-10 ⚡ transition-transform group-active:scale-90">⚡</span>
-          <span className="font-black text-white text-lg tracking-tighter relative z-10 uppercase">Super-Cast</span>
-          <div className="absolute right-4 top-4 bg-black/20 px-2 py-1 rounded-full text-[10px] font-mono font-bold">{spinTickets}</div>
+          <span className="text-2xl relative z-10 ⚡ transition-transform group-active:scale-95">⚡</span>
+          <span className="font-black text-white text-sm tracking-tight relative z-10 uppercase">
+            {Date.now() < boosterExpiry ? 'BOOSTING...' : 'BOOSTER'}
+          </span>
+          <p className="text-[8px] font-black opacity-40">+5% SPEED</p>
         </button>
       </div>
+
+      <ConvertMenu
+        isOpen={isConvertOpen}
+        onClose={() => setIsConvertOpen(false)}
+        fishBalance={minedFish}
+        onConvert={(amount) => {
+          setMinedFish(0); // Reset Fish after conversion
+          console.log(`Converted ${amount} Fish`);
+        }}
+      />
 
       <SwapMenu
         isOpen={isSwapOpen}
