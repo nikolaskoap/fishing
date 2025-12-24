@@ -112,7 +112,13 @@ export function Demo({ initialBoat }: { initialBoat?: any }) {
           const savedLastSeen = parseInt(data.lastSeen || Date.now().toString())
 
           setRodLevel(savedRod)
-          setActiveBoatLevel(savedBoat)
+          setActiveBoatLevel(prev => savedBoat || prev)
+          setFishCap(prev => {
+            if (savedBoat === 1) return 10
+            if (savedBoat === 2) return 25
+            if (savedBoat === 3) return 60
+            return prev
+          })
           setBoosterExpiry(savedBooster)
           setXp(savedXp)
           setSpinTickets(savedTickets)
