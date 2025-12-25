@@ -119,7 +119,7 @@ export default function MainGameScreen() {
   useEffect(() => {
     if (!fid) return
 
-    const performAuth = async () => {
+    const loadUserData = async () => {
       try {
         const authData = await miningService.connect(fid, address || "0x")
         setUserId(authData.userId)
@@ -154,7 +154,7 @@ export default function MainGameScreen() {
             } catch (e) { console.error("Bucket parse error", e) }
           }
           setActiveBoatLevel(savedBoat)
-          setFishCap(BOAT_CONFIG[savedBoat]?.fishPerHour || 0)
+          setFishCap(BOAT_CONFIG[savedBoat as keyof typeof BOAT_CONFIG]?.fishPerHour || 0)
           setBoosterExpiry(savedBooster)
           setXp(savedXp)
           setSpinTickets(savedTickets)
@@ -170,7 +170,7 @@ export default function MainGameScreen() {
       } catch (e) { console.error("Load error", e) }
     }
     loadUserData()
-  }, [fid])
+  }, [fid, address])
 
   // Clear notification after 3 seconds
   useEffect(() => {
@@ -441,7 +441,7 @@ export default function MainGameScreen() {
 
             <button
               onClick={async () => {
-                const res = await miningService.verifySocial(userId || fid.toString(), true, true);
+                const res = await miningService.verifySocial(userId || fid?.toString() || "0", true, true);
                 if (res.verified) {
                   setSocialVerified(true);
                 } else {
@@ -649,7 +649,7 @@ export default function MainGameScreen() {
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
         referralCount={referralCount}
-        fid={fid}
+        fid={fid || 0}
       />
     </div>
   )

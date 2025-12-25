@@ -1,6 +1,30 @@
-'use client'
-
 import { FishRarity } from "@/components/Fishing/MiningController";
+import { BOAT_CONFIG } from "@/lib/constants";
+
+export { BOAT_CONFIG };
+
+export const generateBucket = (fishPerHour: number): FishRarity[] => {
+    const bucket: FishRarity[] = [];
+    const junkCount = Math.floor(fishPerHour * 0.4);
+    const commonCount = Math.floor(fishPerHour * 0.4);
+    const uncommonCount = Math.floor(fishPerHour * 0.15);
+    const epicCount = Math.floor(fishPerHour * 0.04);
+    const legendaryCount = Math.floor(fishPerHour * 0.01);
+
+    for (let i = 0; i < junkCount; i++) bucket.push('JUNK');
+    for (let i = 0; i < commonCount; i++) bucket.push('COMMON');
+    for (let i = 0; i < uncommonCount; i++) bucket.push('UNCOMMON');
+    for (let i = 0; i < epicCount; i++) bucket.push('EPIC');
+    for (let i = 0; i < legendaryCount; i++) bucket.push('LEGENDARY');
+
+    // Shuffle the bucket
+    for (let i = bucket.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bucket[i], bucket[j]] = [bucket[j], bucket[i]];
+    }
+
+    return bucket;
+}
 
 export const miningService = {
     async getUser(fid: number) {

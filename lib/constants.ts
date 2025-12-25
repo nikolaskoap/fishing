@@ -1,26 +1,28 @@
+export const APP_URL = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
+
 export const BOAT_CONFIG = {
   0: { // FREE
     price: 0,
-    catchingRate: 0.05, // 5% base for free mode
-    hourlyFishCap: 0,
+    catchingRate: 0.05,
+    fishPerHour: 0,
     label: "Free Mode"
   },
   10: {
     price: 10,
     catchingRate: 0.15,
-    hourlyFishCap: 100,
+    fishPerHour: 100,
     label: "Small Boat"
   },
   20: {
     price: 20,
     catchingRate: 0.16,
-    hourlyFishCap: 150,
+    fishPerHour: 150,
     label: "Medium Boat"
   },
   50: {
     price: 50,
     catchingRate: 0.20,
-    hourlyFishCap: 250,
+    fishPerHour: 250,
     label: "Large Boat"
   }
 } as const;
@@ -35,3 +37,11 @@ export const SWAP_CONFIG = {
 export const SPIN_CONFIG = {
   COOLDOWN: 30, // 30 seconds
 }
+
+export const FISH_VALUES = {
+  LEGENDARY: 10,
+  EPIC: 5,
+  UNCOMMON: 3,
+  COMMON: 1,
+  JUNK: 0.1
+} as const;

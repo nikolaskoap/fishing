@@ -5,9 +5,6 @@ import { useFrame } from '@/components/farcaster-provider'
 interface BoatOption {
     id: string
     name: string
-    price: number
-    rate: number
-    bonus: number
     price: string
     rate: string
 }
@@ -55,7 +52,7 @@ export default function BoatSelectionGate({ fid, userId, onSelect, onFreeMode }:
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-[#001226] p-4">
             <h1 className="text-3xl font-black text-white mb-8">SELECT YOUR VESSEL</h1>
-            
+
             <div className="grid grid-cols-1 gap-4 w-full max-w-md">
                 {boats.map((boat) => (
                     <button
@@ -63,10 +60,9 @@ export default function BoatSelectionGate({ fid, userId, onSelect, onFreeMode }:
                         onClick={() => handleSelect(boat)}
                         className="bg-[#075985] p-6 rounded-3xl border-4 border-[#0ea5e9] text-left hover:scale-105 transition-transform shadow-xl"
                     >
-                            <span className="text-7xl">
-                                {boat.id === 'boat1' ? '🚤' : boat.id === 'boat2' ? '🚢' : '🛳️'}
-                            </span>
-                        </div>
+                        <span className="text-7xl">
+                            {boat.id === 'boat1' ? '🚤' : boat.id === 'boat2' ? '🚢' : '🛳️'}
+                        </span>
                     </button>
                 ))}
 
