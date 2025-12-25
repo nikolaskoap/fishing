@@ -11,15 +11,16 @@ export const FISH_VALUE: Record<FishRarity, number> = {
     'COMMON': 1,
     'UNCOMMON': 3,
     'EPIC': 5,
-    'LEGENDARY': 10
+    'LEGENDARY': 10,
+    'JUNK': 0.1
 }
 
 export function generateBucket(fishCap: number): FishRarity[] {
     const bucket: FishRarity[] = []
     let remainingFish = fishCap
 
-    const rarities: FishRarity[] = ['LEGENDARY', 'EPIC', 'UNCOMMON', 'COMMON']
-    const weights = [0.05, 0.15, 0.30, 0.50] // 5%, 15%, 30%, 50%
+    const rarities: FishRarity[] = ['LEGENDARY', 'EPIC', 'UNCOMMON', 'COMMON', 'JUNK']
+    const weights = [0.03, 0.12, 0.25, 0.50, 0.10] // 3%, 12%, 25%, 50%, 10%
 
     while (remainingFish > 0) {
         // Weighted random
