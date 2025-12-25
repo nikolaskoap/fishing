@@ -189,27 +189,48 @@ export default function MainGameScreen() {
   const handleCatch = useCallback(async (catchData: FishCatch) => {
     if (!fid) return
 
+    // PRACTICE MODE / FREE MODE: Show local UI feedback only
+    if (activeBoatLevel === 0) {
+      setCatchNotification({
+        rarity: catchData.rarity,
+        value: 0
+      })
+      return
+    }
+
     try {
+      // 1. Call real server-side cast
       const result = await api.cast(fid)
+
       if (result.status === "SUCCESS") {
+        // 2. Update all stats immediately based on server response
         setMinedFish(result.minedFish)
         setXp(result.xp)
         setBucketIndex(result.currentIndex)
 
+        // Update refs for periodic saver
+        minedFishRef.current = result.minedFish
+        xpRef.current = result.xp
+
         if (announceOn) {
-          console.log(`Caught ${result.fishType}! +${result.fishValue} fish`)
+          console.log(`[PAID MODE] Caught ${result.fishType}! +${result.fishValue} fish`)
         }
+
+        // 3. Show catch notification popup
         setCatchNotification({
           rarity: result.fishType as FishRarity,
           value: result.fishValue
         })
+      } else if (result.status === "NO_FISH") {
+        console.warn("Hourly limit reached or distribution depleted.")
+        // Maybe show an info popup here if desired
       } else if (result.error === "CAST_TOO_FAST") {
         console.warn("Casting too fast, server rejected reward.")
       }
     } catch (e) {
-      console.error("Mining error", e)
+      console.error("Mining error in PAID mode", e)
     }
-  }, [fid, announceOn])
+  }, [fid, announceOn, activeBoatLevel])
 
   // Simple animation loop for miners count only
   useEffect(() => {
@@ -464,7 +485,7 @@ export default function MainGameScreen() {
       </div>
 
       {/* CENTRAL GAME AREA */}
-      <div className="flex-1 relative mx-4 mb-4 rounded-[2.5rem] border-4 border-[#0c4a6e] bg-hex-pattern overflow-hidden shadow-2xl">
+      <div className="flex-1 relative mx-4 mb-4 rounded-[2.5rem] border-4 border-[#0c4a6e] bg-[#075985] overflow-hidden shadow-2xl">
         <FishingGame
           activeBoatLevel={activeBoatLevel}
           currentRate={total}

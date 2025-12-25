@@ -52,23 +52,34 @@ export default function MiningController({
 
     // Casting Loop
     useEffect(() => {
-        if (!isActive || bucket.length === 0 || currentIndex >= bucket.length) return
+        // If no bucket, and isActive is true, create a temporary practice bucket
+        let effectiveBucket = bucket
+        if (isActive && bucket.length === 0) {
+            effectiveBucket = Array(10).fill('JUNK').map(() =>
+                (Math.random() > 0.7 ? 'COMMON' : Math.random() > 0.4 ? 'UNCOMMON' : 'JUNK') as FishRarity
+            )
+        }
 
-        // Calculate interval: 3600s / items * multiplier
-        const baseInterval = 3600000 / bucket.length
-        const interval = baseInterval / speedMultiplier
+        if (!isActive || effectiveBucket.length === 0) return
+
+        // Reset index if we hit the end of practice bucket
+        const index = currentIndex % (effectiveBucket.length || 1)
+
+        // Calculate interval (aim for ~15-20s in practice mode if boat is 0, else use real logic)
+        const baseInterval = effectiveBucket.length === 0 ? 15000 : (3600000 / effectiveBucket.length)
+        const interval = (baseInterval / speedMultiplier) || 20000
 
         const timeout = setTimeout(() => {
-            const rarity = bucket[currentIndex]
+            const rarity = effectiveBucket[index]
             onCatch({
                 id: Math.random().toString(36).substr(2, 9),
                 rarity,
                 value: FISH_VALUES[rarity],
                 timestamp: Date.now()
             })
-            const nextIndex = currentIndex + 1
+            const nextIndex = index + 1
             setCurrentIndex(nextIndex)
-            if (onProgressUpdate) onProgressUpdate(bucket, nextIndex)
+            if (onProgressUpdate && bucket.length > 0) onProgressUpdate(bucket, nextIndex)
         }, interval)
 
         return () => clearTimeout(timeout)
