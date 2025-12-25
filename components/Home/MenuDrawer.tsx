@@ -9,6 +9,7 @@ interface MenuDrawerProps {
     onOpenSpin: () => void
     onOpenStats: () => void
     onOpenInvite: () => void
+    onOpenInventory: () => void
 }
 
 export function MenuDrawer({
@@ -17,7 +18,8 @@ export function MenuDrawer({
     onOpenSwap,
     onOpenSpin,
     onOpenStats,
-    onOpenInvite
+    onOpenInvite,
+    onOpenInventory
 }: MenuDrawerProps) {
     if (!isOpen) return null
 
@@ -48,7 +50,7 @@ export function MenuDrawer({
                     <MenuButton icon="🎡" label="Lucky Spin" onClick={() => { onOpenSpin(); onClose(); }} />
                     <MenuButton icon="📊" label="Statistics" onClick={() => { onOpenStats(); onClose(); }} />
                     <MenuButton icon="👥" label="Invite & Earn" onClick={() => { onOpenInvite(); onClose(); }} />
-                    <MenuButton icon="🎒" label="Inventory" onClick={() => onClose()} />
+                    <MenuButton icon="🎒" label="Inventory" onClick={() => { onOpenInventory(); onClose(); }} />
                 </nav>
 
                 <div className="pt-6 border-t border-white/5 space-y-4">

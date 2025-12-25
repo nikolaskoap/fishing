@@ -2,12 +2,15 @@
 
 import React from 'react';
 
-export default function AutoCaster() {
+export default function AutoCaster({ isActive = false }: { isActive?: boolean }) {
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
       {/* Fishing Rod Animation */}
       <div className="relative w-full h-[300px] pointer-events-none">
-        <div className="absolute bottom-[-20px] left-[-20px] w-48 h-48 md:w-64 md:h-64 animate-[rod_5s_ease-in-out_infinite] origin-bottom-left">
+        <div
+          className={`absolute bottom-[-20px] left-[-20px] w-48 h-48 md:w-64 md:h-64 origin-bottom-left transition-transform duration-1000
+            ${isActive ? 'animate-[rod_5s_ease-in-out_infinite]' : 'rotate-[-30deg]'}`}
+        >
           <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-[0_0_20px_rgba(34,211,238,0.3)]">
             {/* Rod */}
             <path
@@ -15,7 +18,7 @@ export default function AutoCaster() {
               stroke="url(#rodGradient)"
               strokeWidth="6"
               strokeLinecap="round"
-              className="animate-[bend_5s_ease-in-out_infinite]"
+              className={isActive ? "animate-[bend_5s_ease-in-out_infinite]" : ""}
             />
             {/* Fishing Line */}
             <path
@@ -24,10 +27,12 @@ export default function AutoCaster() {
               strokeWidth="1"
               fill="none"
               strokeDasharray="4 2"
-              className="animate-[line_5s_ease-in-out_infinite] opacity-60"
+              className={`opacity-60 ${isActive ? 'animate-[line_5s_ease-in-out_infinite]' : 'opacity-0'}`}
             />
             {/* Lure/Hook */}
-            <circle cx="100" cy="150" r="4" fill="#ef4444" className="animate-[bob_5s_ease-in-out_infinite] shadow-lg" />
+            {isActive && (
+              <circle cx="100" cy="150" r="4" fill="#ef4444" className="animate-[bob_5s_ease-in-out_infinite] shadow-lg" />
+            )}
 
             <defs>
               <linearGradient id="rodGradient" x1="0%" y1="100%" x2="100%" y2="0%">

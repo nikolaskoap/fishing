@@ -6,16 +6,18 @@ import AutoCaster from './AutoCaster'
 export function FishingGame({
   activeBoatLevel = 0,
   currentRate = 0,
-  isMuted = false
+  isMuted = false,
+  isActive = false
 }: {
   activeBoatLevel: number
   currentRate: number
   isMuted?: boolean
+  isActive?: boolean
 }) {
   return (
     <div className="relative w-full h-full min-h-[400px] overflow-hidden">
       {/* Visual Animation */}
-      <AutoCaster />
+      <AutoCaster isActive={isActive} />
 
       {/* Ambient VFX */}
       <div className="absolute inset-0 pointer-events-none">

@@ -50,6 +50,8 @@ export default function MainGameScreen() {
   const [referralCount, setReferralCount] = useState(0)
   const [invitees, setInvitees] = useState<string[]>([])
   const [hasClaimed3Ref, setHasClaimed3Ref] = useState(false)
+  const [isAutoCastActive, setIsAutoCastActive] = useState(false)
+  const [catchNotification, setCatchNotification] = useState<{ rarity: FishRarity, value: number } | null>(null)
 
   const BASE_RATE = 60
 
@@ -146,6 +148,14 @@ export default function MainGameScreen() {
     loadUserData()
   }, [fid])
 
+  // Clear notification after 3 seconds
+  useEffect(() => {
+    if (catchNotification) {
+      const timer = setTimeout(() => setCatchNotification(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [catchNotification])
+
   // 2. Periodic Saver (Reduced necessity as /cast saves, but good for XP/Tickets)
   useEffect(() => {
     if (!fid) return
@@ -183,6 +193,10 @@ export default function MainGameScreen() {
         if (announceOn) {
           console.log(`Caught ${result.fishType}! +${result.fishValue} fish`)
         }
+        setCatchNotification({
+          rarity: result.fishType as FishRarity,
+          value: result.fishValue
+        })
       } else if (result.error === "CAST_TOO_FAST") {
         console.warn("Casting too fast, server rejected reward.")
       }
@@ -341,8 +355,9 @@ export default function MainGameScreen() {
         onClose={() => setIsMenuOpen(false)}
         onOpenSwap={() => setIsSwapOpen(true)}
         onOpenSpin={() => setIsSpinOpen(true)}
-        onOpenStats={() => { }} // TODO
-        onOpenInvite={() => { }} // TODO
+        onOpenStats={() => alert("Statistics feature coming soon!")}
+        onOpenInvite={() => alert("Invite & Earn feature coming soon!")}
+        onOpenInventory={() => alert("Inventory feature coming soon!")}
       />
 
       {/* Headless Controller */}
@@ -356,7 +371,7 @@ export default function MainGameScreen() {
           setBucketIndex(i)
         }}
         onCatch={handleCatch}
-        isActive={true}
+        isActive={isAutoCastActive}
       />
 
       {/* TOP NAVBAR */}
@@ -414,12 +429,30 @@ export default function MainGameScreen() {
       </div>
 
       {/* USDC SUB-BALANCE */}
-      <div className="px-4 pb-2">
-        <div className="bg-[#1e293b]/50 p-3 rounded-xl border border-white/5 inline-flex items-center gap-3">
+      <div className="px-4 pb-2 flex items-center justify-between gap-4">
+        {/* USDC SUB-BALANCE */}
+        <div className="bg-[#1e293b]/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold shadow-inner">USDC</div>
           <div>
             <p className="text-[8px] font-bold opacity-50 uppercase leading-none mb-1">Staged Fund</p>
             <p className="text-sm font-black font-mono leading-none">0.052</p>
+          </div>
+        </div>
+
+        {/* Rod Card (Moved from game area to top balance section) */}
+        <div className="bg-[#1e293b]/95 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 flex items-center gap-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-[#0ea5e9]/20 border border-[#0ea5e9]/40 flex items-center justify-center text-xs">🎣</div>
+            <div>
+              <p className="text-[8px] font-black opacity-30 uppercase leading-none">Rod</p>
+              <p className="text-[10px] font-black italic leading-none">Level {rodLevel}</p>
+            </div>
+          </div>
+          <div className="w-16">
+            <div className="h-1 w-full bg-black/40 rounded-full overflow-hidden border border-white/5 mb-0.5">
+              <div className="h-full bg-green-500 w-[75%] shadow-[0_0_8px_#22C55E]"></div>
+            </div>
+            <p className="text-[6px] font-bold opacity-30 text-right uppercase">75%</p>
           </div>
         </div>
       </div>
@@ -430,33 +463,36 @@ export default function MainGameScreen() {
           activeBoatLevel={activeBoatLevel}
           currentRate={total}
           isMuted={!volumeOn}
+          isActive={isAutoCastActive}
         />
 
-        {/* Rod Card (Moved to bottom-left area of the hex pattern) */}
-        <div className="absolute bottom-6 left-6 z-30 bg-[#1e293b]/95 backdrop-blur-md p-4 rounded-[2rem] border-2 border-white/10 w-44 shadow-2xl transition-all">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-[#0ea5e9]/20 border-2 border-[#0ea5e9]/40 flex items-center justify-center text-xl">🎣</div>
-            <div>
-              <p className="text-[10px] font-black opacity-30 uppercase">Rod</p>
-              <p className="text-sm font-black italic">Level {rodLevel}</p>
-            </div>
+        {/* Catch Notification Popup */}
+        {catchNotification && (
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-xl border-2 border-yellow-400/50 p-4 rounded-2xl flex flex-col items-center gap-1 animate-bounce-in shadow-[0_0_30px_rgba(250,204,21,0.4)]">
+            <span className="text-3xl">🐟</span>
+            <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">You Caught!</p>
+            <p className="text-sm font-black">{catchNotification.rarity}</p>
+            <p className="text-xs font-bold text-green-400">+{catchNotification.value} Fish</p>
           </div>
-          <div className="space-y-1">
-            <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
-              <div className="h-full bg-green-500 w-[75%] shadow-[0_0_8px_#22C55E]"></div>
-            </div>
-            <p className="text-[8px] font-bold opacity-30 text-right uppercase">Durability 75%</p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* BOTTOM ACTION BAR */}
       <div className="px-4 pb-8 pt-2 grid grid-cols-2 gap-4 bg-gradient-to-t from-[#020617] to-transparent">
         <button
-          className="group relative bg-[#FDE047] hover:bg-[#FACC15] p-6 rounded-[2.5rem] border-b-8 border-[#A16207] shadow-xl active:border-b-0 active:translate-y-2 transition-all flex flex-col items-center justify-center gap-1 overflow-hidden"
+          onClick={() => setIsAutoCastActive(!isAutoCastActive)}
+          className={`group relative p-6 rounded-[2.5rem] border-b-8 shadow-xl active:border-b-0 active:translate-y-2 transition-all flex flex-col items-center justify-center gap-1 overflow-hidden
+            ${isAutoCastActive
+              ? 'bg-[#4ADE80] border-[#166534] text-black ring-4 ring-green-400/50'
+              : 'bg-[#FDE047] border-[#A16207] text-black'
+            }`}
         >
-          <span className="text-2xl relative z-10 transition-transform group-active:scale-95">⚓</span>
-          <span className="font-black text-black text-sm tracking-tight relative z-10">AUTO-CAST</span>
+          <span className={`text-2xl relative z-10 transition-transform group-active:scale-95 ${isAutoCastActive ? 'animate-bounce' : ''}`}>
+            {isAutoCastActive ? '🛶' : '⚓'}
+          </span>
+          <span className="font-black text-sm tracking-tight relative z-10">
+            {isAutoCastActive ? 'CASTING...' : 'AUTO-CAST'}
+          </span>
         </button>
 
         <button
