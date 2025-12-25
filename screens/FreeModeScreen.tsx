@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { SpinMenu } from '@/components/Home/SpinMenu'
 import { useFrame } from '@/components/farcaster-provider'
-import { api } from '@/services/api'
+import { miningService } from '@/services/mining.service'
 
 interface FreeModeScreenProps {
     onPurchaseBoat: () => void;
@@ -22,7 +22,7 @@ export default function FreeModeScreen({ onPurchaseBoat }: FreeModeScreenProps) 
         if (!fid) return
         const loadData = async () => {
             try {
-                const data = await api.getUser(fid)
+                const data = await miningService.getUser(fid)
                 if (data && !data.error) {
                     setSpinTickets(parseInt(data.spinTickets || '0'))
                     setLastDailySpin(parseInt(data.lastDailySpin || '0'))
@@ -56,7 +56,7 @@ export default function FreeModeScreen({ onPurchaseBoat }: FreeModeScreenProps) 
 
         if (fid) {
             try {
-                await api.saveUser({
+                await miningService.saveUser({
                     fid,
                     minedFish: newMinedFish,
                     spinTickets: newTickets,

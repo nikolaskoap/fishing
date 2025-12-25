@@ -1,60 +1,64 @@
-import { FishRarity } from "@/components/Fishing/MiningController"
+'use client'
 
-export const BOAT_CONFIG: Record<number, { price: number, fishPerHour: number, baseCastInterval: number }> = {
-    0: { price: 0, fishPerHour: 0, baseCastInterval: 999999 }, // Free Mode
-    1: { price: 10, fishPerHour: 100, baseCastInterval: 6 },
-    2: { price: 20, fishPerHour: 150, baseCastInterval: 5 },
-    3: { price: 50, fishPerHour: 250, baseCastInterval: 4 }
-}
+import { FishRarity } from "@/components/Fishing/MiningController";
 
-export const FISH_VALUE: Record<FishRarity, number> = {
-    'COMMON': 1,
-    'UNCOMMON': 3,
-    'EPIC': 5,
-    'LEGENDARY': 10,
-    'JUNK': 0.1
-}
+export const miningService = {
+    async getUser(fid: number) {
+        const res = await fetch(`/api/user?fid=${fid}`);
+        return res.json();
+    },
 
-export function generateBucket(fishCap: number): FishRarity[] {
-    const bucket: FishRarity[] = []
-    let remainingFish = fishCap
+    async saveUser(data: any) {
+        const res = await fetch('/api/user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
 
-    const rarities: FishRarity[] = ['LEGENDARY', 'EPIC', 'UNCOMMON', 'COMMON', 'JUNK']
-    const weights = [0.03, 0.12, 0.25, 0.50, 0.10] // 3%, 12%, 25%, 50%, 10%
+    async connect(fid: number, wallet: string) {
+        const res = await fetch('/api/auth/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fid, walletAddress: wallet })
+        });
+        return res.json();
+    },
 
-    while (remainingFish > 0) {
-        // Weighted random
-        const r = Math.random()
-        let selected: FishRarity = 'COMMON'
-        let sum = 0
-        for (let i = 0; i < rarities.length; i++) {
-            sum += weights[i]
-            if (r < sum) {
-                selected = rarities[i]
-                break
-            }
-        }
+    async verifySocial(userId: string, followed: boolean, recasted: boolean) {
+        const res = await fetch('/api/auth/verify-social', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, followed, recasted })
+        });
+        return res.json();
+    },
 
-        const value = FISH_VALUE[selected]
-        if (value <= remainingFish) {
-            bucket.push(selected)
-            remainingFish -= value
-        } else {
-            // If we can't fit the selected, try to fit a common one
-            if (remainingFish >= 1) {
-                bucket.push('COMMON')
-                remainingFish -= 1
-            } else {
-                break
-            }
-        }
+    async startMining(userId: string) {
+        const res = await fetch('/api/mining/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        return res.json();
+    },
+
+    async cast(userId: string) {
+        const res = await fetch('/api/mining/cast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        return res.json();
+    },
+
+    async convert(fid: number, amount: number) {
+        const res = await fetch('/api/mining/convert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fid, amount })
+        });
+        return res.json();
     }
-
-    // Shuffle bucket
-    for (let i = bucket.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [bucket[i], bucket[j]] = [bucket[j], bucket[i]]
-    }
-
-    return bucket
 }

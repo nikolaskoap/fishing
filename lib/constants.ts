@@ -1,9 +1,37 @@
-export const MESSAGE_EXPIRATION_TIME = 1000 * 60 * 60 * 24 * 30; // 30 day
+export const BOAT_CONFIG = {
+  0: { // FREE
+    price: 0,
+    catchingRate: 0.05, // 5% base for free mode
+    hourlyFishCap: 0,
+    label: "Free Mode"
+  },
+  10: {
+    price: 10,
+    catchingRate: 0.15,
+    hourlyFishCap: 100,
+    label: "Small Boat"
+  },
+  20: {
+    price: 20,
+    catchingRate: 0.16,
+    hourlyFishCap: 150,
+    label: "Medium Boat"
+  },
+  50: {
+    price: 50,
+    catchingRate: 0.20,
+    hourlyFishCap: 250,
+    label: "Large Boat"
+  }
+} as const;
 
-const APP_URL: string = process.env.NEXT_PUBLIC_URL as string;
-
-if (!APP_URL) {
-  throw new Error('NEXT_PUBLIC_URL or NEXT_PUBLIC_VERCEL_URL is not set');
+export const SWAP_CONFIG = {
+  RATE: 100, // 100 CanFish = 5 USDC
+  USDC_REWARD: 5,
+  FEE: 1, // 1 USDC fee
+  MIN_SWAP: 100
 }
 
-export { APP_URL };
+export const SPIN_CONFIG = {
+  COOLDOWN: 30, // 30 seconds
+}

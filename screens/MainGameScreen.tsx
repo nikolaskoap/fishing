@@ -19,7 +19,9 @@ import { StatsMenu } from '@/components/Home/StatsMenu';
 import { InventoryMenu } from '@/components/Home/InventoryMenu';
 import { InviteMenu } from '@/components/Home/InviteMenu';
 
-import { api } from '@/services/api';
+import { miningService } from '@/services/mining.service';
+import { spinService } from '@/services/spin.service';
+import { swapService } from '@/services/swap.service';
 import { BOAT_CONFIG } from '@/services/mining.service';
 
 export default function MainGameScreen() {
@@ -54,7 +56,12 @@ export default function MainGameScreen() {
   const [invitees, setInvitees] = useState<string[]>([])
   const [hasClaimed3Ref, setHasClaimed3Ref] = useState(false)
   const [isAutoCastActive, setIsAutoCastActive] = useState(false)
-  const [catchNotification, setCatchNotification] = useState<{ rarity: FishRarity, value: number } | null>(null)
+  const [catchNotification, setCatchNotification] = useState<{
+    rarity: FishRarity,
+    value: number,
+    label?: string,
+    subLabel?: string
+  } | null>(null)
 
   const BASE_RATE = 60
 
@@ -101,6 +108,9 @@ export default function MainGameScreen() {
   const [isSpinOpen, setIsSpinOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isConvertOpen, setIsConvertOpen] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [socialVerified, setSocialVerified] = useState(false)
+  const [isSocialGateOpen, setIsSocialGateOpen] = useState(false)
   const [isStatsOpen, setIsStatsOpen] = useState(false)
   const [isInventoryOpen, setIsInventoryOpen] = useState(false)
   const [isInviteOpen, setIsInviteOpen] = useState(false)
@@ -109,9 +119,17 @@ export default function MainGameScreen() {
   useEffect(() => {
     if (!fid) return
 
-    const loadUserData = async () => {
+    const performAuth = async () => {
       try {
-        const data = await api.getUser(fid)
+        const authData = await miningService.connect(fid, address || "0x")
+        setUserId(authData.userId)
+        setSocialVerified(authData.socialVerified)
+
+        // Persist userId for child components (SpinWheel, etc)
+        localStorage.setItem('userId', authData.userId)
+          ; (window as any).userId = authData.userId
+
+        const data = await miningService.getUser(fid)
 
         if (data && !data.error) {
           const savedFish = parseFloat(data.minedFish || '0')
@@ -168,7 +186,7 @@ export default function MainGameScreen() {
 
     const interval = setInterval(async () => {
       try {
-        await api.saveUser({
+        await miningService.saveUser({
           fid,
           minedFish: minedFishRef.current,
           activeBoatLevel: boatRef.current,
@@ -200,7 +218,7 @@ export default function MainGameScreen() {
 
     try {
       // 1. Call real server-side cast
-      const result = await api.cast(fid)
+      const result = await miningService.cast(userId || fid.toString())
 
       if (result.status === "SUCCESS") {
         // 2. Update all stats immediately based on server response
@@ -221,11 +239,20 @@ export default function MainGameScreen() {
           rarity: result.fishType as FishRarity,
           value: result.fishValue
         })
-      } else if (result.status === "NO_FISH") {
-        console.warn("Hourly limit reached or distribution depleted.")
-        // Maybe show an info popup here if desired
-      } else if (result.error === "CAST_TOO_FAST") {
-        console.warn("Casting too fast, server rejected reward.")
+      } else if (result.status === "MISS") {
+        setCatchNotification({
+          rarity: 'JUNK',
+          value: 0,
+          label: "MISS!",
+          subLabel: "Better luck next time"
+        })
+      } else if (result.status === "CAP_REACHED") {
+        setCatchNotification({
+          rarity: 'JUNK',
+          value: 0,
+          label: "CAP REACHED",
+          subLabel: "Wait for the next hour"
+        })
       }
     } catch (e) {
       console.error("Mining error in PAID mode", e)
@@ -241,7 +268,6 @@ export default function MainGameScreen() {
   }, [])
 
   const handleSwap = async (amount: number) => {
-    // ... same as before
     if (!fid || !address) {
       alert("Please connect wallet first")
       return
@@ -251,31 +277,18 @@ export default function MainGameScreen() {
       setMinedFish(prev => Math.max(0, prev - amount))
       setIsSwapOpen(false)
 
-      const res = await fetch('/api/withdraw', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fid,
-          walletAddress: address,
-          amountFish: amount,
-          amountUSDC: amount // 1:1 Rate
-        })
-      })
-
-      const data = await res.json()
-      if (data.success) {
+      const result = await swapService.withdraw(fid, address, amount)
+      if (result.success) {
         minedFishRef.current -= amount
-        await fetch('/api/user', {
-          method: 'POST',
-          body: JSON.stringify({
-            fid,
-            minedFish: minedFishRef.current,
-            walletAddress: address
-          })
-        }) // simple partial save 
-        alert(`Withdraw Request Sent! ID: ${data.id}`)
+        // Update user state after succesful swap
+        await miningService.saveUser({
+          fid,
+          minedFish: minedFishRef.current,
+          walletAddress: address
+        })
+        alert(`Withdraw Request Sent! ID: ${result.id || 'pending'}`)
       } else {
-        alert("Withdraw failed: " + data.error)
+        alert("Withdraw failed: " + (result.error || 'Unknown error'))
       }
     } catch (e) {
       console.error("Swap Error", e)
@@ -342,7 +355,7 @@ export default function MainGameScreen() {
   const handleConvert = async (amount: number) => {
     if (!fid) return
     try {
-      const result = await api.convert(fid, amount)
+      const result = await miningService.convert(fid, amount)
       if (result.success) {
         setMinedFish(result.minedFish)
         setCanFishBalance(result.canFishBalance)
@@ -400,6 +413,48 @@ export default function MainGameScreen() {
         onCatch={handleCatch}
         isActive={isAutoCastActive}
       />
+
+      {/* SOCIAL GATE OVERLAY */}
+      {!socialVerified && (
+        <div className="absolute inset-0 z-[100] bg-[#001226]/95 flex flex-col items-center justify-center p-8 backdrop-blur-md">
+          <div className="bg-[#075985] p-8 rounded-[3rem] border-4 border-[#0ea5e9] shadow-[0_0_50px_rgba(14,165,233,0.3)] max-w-sm w-full text-center space-y-6">
+            <div className="text-6xl mb-4">🛡️</div>
+            <h2 className="text-3xl font-black text-white italic">SOCIAL GATE</h2>
+            <p className="text-cyan-200 text-sm font-bold">Follow & Recast to unlock the Ocean!</p>
+
+            <div className="space-y-3 text-left">
+              <div className="flex items-center gap-3 bg-[#0c4a6e] p-4 rounded-2xl">
+                <span className="text-2xl">👤</span>
+                <div>
+                  <p className="text-xs text-cyan-400 font-black uppercase">Step 1</p>
+                  <p className="text-sm font-bold">Follow @basefishing</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-[#0c4a6e] p-4 rounded-2xl">
+                <span className="text-2xl">🔄</span>
+                <div>
+                  <p className="text-xs text-cyan-400 font-black uppercase">Step 2</p>
+                  <p className="text-sm font-bold">Recast pinned post</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                const res = await miningService.verifySocial(userId || fid.toString(), true, true);
+                if (res.verified) {
+                  setSocialVerified(true);
+                } else {
+                  alert("Verification failed. Please check steps.");
+                }
+              }}
+              className="w-full bg-[#FDE047] text-black py-4 rounded-2xl font-black text-xl shadow-[0_4px_0_#A16207] hover:translate-y-1 hover:shadow-none transition-all"
+            >
+              VERIFY & UNLOCK
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* TOP NAVBAR */}
       <div className="flex items-center justify-between p-4 bg-[#0c4a6e]/80 backdrop-blur-md border-b border-white/10 z-40">
@@ -500,12 +555,16 @@ export default function MainGameScreen() {
               {catchNotification.rarity === 'JUNK' ? (Math.random() > 0.5 ? '👟' : '🥫') : '🐟'}
             </span>
             <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">
-              {catchNotification.rarity === 'JUNK' ? 'You Reeled In!' : 'You Caught!'}
+              {catchNotification.label || (catchNotification.rarity === 'JUNK' ? 'You Reeled In!' : 'You Caught!')}
             </p>
-            <p className="text-sm font-black">{catchNotification.rarity === 'JUNK' ? (Math.random() > 0.5 ? 'Old Boot' : 'Empty Can') : catchNotification.rarity}</p>
-            <p className="text-xs font-bold text-green-400">
-              +{catchNotification.value} {catchNotification.rarity === 'JUNK' ? 'Scrap' : 'Fish'}
+            <p className="text-sm font-black">
+              {catchNotification.subLabel || (catchNotification.rarity === 'JUNK' ? (Math.random() > 0.5 ? 'Old Boot' : 'Empty Can') : catchNotification.rarity)}
             </p>
+            {catchNotification.value > 0 && (
+              <p className="text-xs font-bold text-green-400">
+                +{catchNotification.value} {catchNotification.rarity === 'JUNK' ? 'Scrap' : 'Fish'}
+              </p>
+            )}
           </div>
         )}
       </div>

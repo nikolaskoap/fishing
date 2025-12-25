@@ -43,63 +43,64 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
     const [history, setHistory] = useState<{ val: number, color: string }[]>([])
 
     // Logic to spin
-    const spin = () => {
+    const spin = async () => {
         if (isSpinning || tickets <= 0) return
 
         setIsSpinning(true)
         setIsResting(false)
         setResult(null)
 
-        // --- RIGGED PROBABILITY LOGIC ---
-        // User wants: 
-        // 50% chance for '0' (Try Again)
-        // 50% chance for WINNING
-        //   - If WINNING: 50% (of win) = 0.05, 49.9% (of win) = 0.5, 0.1% (of win) = Rare [1, 5, 10, 100]
+        try {
+            // userId and fid should be passed via props or context
+            // For now, we'll try to find userId in localStorage if not in props
+            const userId = (window as any).userId || localStorage.getItem('userId')
 
-        const rand = Math.random() * 100
-        let winningPrize = 0
+            const res = await fetch('/api/spin/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            })
+            const data = await res.json()
 
-        if (rand < 50) {
-            winningPrize = 0
-        } else {
-            const winRand = Math.random() * 100
-            if (winRand < 50) {
-                winningPrize = 0.05
-            } else if (winRand < 99.9) {
-                winningPrize = 0.5
-            } else {
-                // Rare prizes
-                const rares = [1, 5, 10, 100]
-                winningPrize = rares[Math.floor(Math.random() * rares.length)]
+            if (!data.success) {
+                alert(data.error || "Spin failed")
+                setIsSpinning(false)
+                return
             }
-        }
 
-        // Find slots that have this prize
-        const matchingSlots = WHEEL_ORDER.filter(num => PRIZE_VALUES[num] === winningPrize)
-        // Fallback (shouldn't happen)
-        const chosenNum = matchingSlots.length > 0
-            ? matchingSlots[Math.floor(Math.random() * matchingSlots.length)]
-            : 15
+            const winningPrize = data.prize
 
-        const angle = ANGLE_MAP[chosenNum] || 0
-        const spins = 8
-        const targetRotation = (360 * -spins) + angle
+            // Find slots that have this prize (Fallback to mapping prize to num)
+            let chosenNum = 15 // default try again
+            if (winningPrize === 0) chosenNum = 15
+            else if (winningPrize === 0.05) chosenNum = 27
+            else if (winningPrize === 0.5) chosenNum = 21
+            else if (winningPrize === 5) chosenNum = 19
+            else if (winningPrize === 50) chosenNum = 32
+            else if (winningPrize === 100) chosenNum = 0
 
-        setBallRotation(targetRotation)
+            const angle = ANGLE_MAP[chosenNum] || 0
+            const spins = 8
+            const targetRotation = (360 * -spins) + angle
 
-        // Animation Time (9s)
-        setTimeout(() => {
-            const color = chosenNum === 0 ? 'green' : RED_NUMBERS.includes(chosenNum) ? 'red' : 'black'
+            setBallRotation(targetRotation)
 
-            setResult({ num: chosenNum, val: winningPrize, color })
-            setIsResting(true) // trigger ball rest position
+            // Animation Time (9s)
+            setTimeout(() => {
+                const color = chosenNum === 0 ? 'green' : RED_NUMBERS.includes(chosenNum) ? 'red' : 'black'
+
+                setResult({ num: chosenNum, val: winningPrize, color })
+                setIsResting(true)
+                setIsSpinning(false)
+
+                onWin(winningPrize)
+                setHistory(prev => [{ val: winningPrize, color }, ...prev].slice(0, 5))
+            }, 9000)
+
+        } catch (e) {
+            console.error("Spin error", e)
             setIsSpinning(false)
-
-            onWin(winningPrize)
-
-            setHistory(prev => [{ val: winningPrize, color }, ...prev].slice(0, 5))
-
-        }, 9000)
+        }
     }
 
     const reset = () => {

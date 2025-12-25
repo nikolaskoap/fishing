@@ -52,38 +52,26 @@ export default function MiningController({
 
     // Casting Loop
     useEffect(() => {
-        // If no bucket, and isActive is true, create a temporary practice bucket
-        let effectiveBucket = bucket
-        if (isActive && bucket.length === 0) {
-            effectiveBucket = Array(10).fill('JUNK').map(() =>
-                (Math.random() > 0.7 ? 'COMMON' : Math.random() > 0.4 ? 'UNCOMMON' : 'JUNK') as FishRarity
-            )
-        }
+        if (!isActive) return
 
-        if (!isActive || effectiveBucket.length === 0) return
-
-        // Reset index if we hit the end of practice bucket
-        const index = currentIndex % (effectiveBucket.length || 1)
-
-        // Calculate interval (aim for ~15-20s in practice mode if boat is 0, else use real logic)
-        const baseInterval = effectiveBucket.length === 0 ? 15000 : (3600000 / effectiveBucket.length)
-        const interval = (baseInterval / speedMultiplier) || 20000
+        // Base interval for casting (e.g., every 5-10 seconds based on boat/rod)
+        // Rate limiting is also enforced on server (4s)
+        const baseInterval = 8000
+        const interval = baseInterval / speedMultiplier
 
         const timeout = setTimeout(() => {
-            const rarity = effectiveBucket[index]
             onCatch({
                 id: Math.random().toString(36).substr(2, 9),
-                rarity,
-                value: FISH_VALUES[rarity],
+                rarity: 'COMMON', // Placeholder, server will override
+                value: 0,
                 timestamp: Date.now()
             })
-            const nextIndex = index + 1
-            setCurrentIndex(nextIndex)
-            if (onProgressUpdate && bucket.length > 0) onProgressUpdate(bucket, nextIndex)
+            // Continue the loop by triggering a re-render/useEffect
+            setCurrentIndex(prev => prev + 1)
         }, interval)
 
         return () => clearTimeout(timeout)
-    }, [isActive, bucket, currentIndex, speedMultiplier, onCatch])
+    }, [isActive, currentIndex, speedMultiplier, onCatch])
 
     return null // Headless component
 }

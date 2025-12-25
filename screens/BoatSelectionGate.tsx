@@ -1,5 +1,5 @@
 import React from 'react'
-import { api } from '@/services/api'
+import { miningService } from '@/services/mining.service'
 import { useFrame } from '@/components/farcaster-provider'
 
 interface BoatOption {
@@ -8,70 +8,61 @@ interface BoatOption {
     price: number
     rate: number
     bonus: number
-    color: string
+    price: string
+    rate: string
 }
 
-const BOATS: BoatOption[] = [
-    { id: 'boat1', name: 'Rookie Raft', price: 10, rate: 100, bonus: 10, color: 'blue' },
-    { id: 'boat2', name: 'Coastal Cruiser', price: 20, rate: 150, bonus: 15, color: 'purple' },
-    { id: 'boat3', name: 'Deep Sea Hunter', price: 50, rate: 250, bonus: 25, color: 'yellow' },
-]
+interface BoatSelectionGateProps {
+    fid: number;
+    userId?: string;
+    onSelect: (level: number) => void;
+    onFreeMode: () => void;
+}
 
-export default function BoatSelection({
-    onSelect,
-    onFreeMode
-}: {
-    onSelect: (boatId: number) => void;
-    onFreeMode: () => void
-}) {
-    const { context } = useFrame()
-    const fid = context?.user.fid
+export default function BoatSelectionGate({ fid, userId, onSelect, onFreeMode }: BoatSelectionGateProps) {
+    const boats: BoatOption[] = [
+        { id: 'boat1', name: 'Small Boat', price: '10 USDC', rate: '15%' },
+        { id: 'boat2', name: 'Medium Boat', price: '20 USDC', rate: '16%' },
+        { id: 'boat3', name: 'Large Boat', price: '50 USDC', rate: '20%' },
+    ]
 
     const handleSelect = async (boat: BoatOption) => {
-        if (!fid) return
-        const level = boat.id === 'boat1' ? 1 : boat.id === 'boat2' ? 2 : 3
+        const level = boat.id === 'boat1' ? 10 : boat.id === 'boat2' ? 20 : 50
         try {
-            await api.saveUser({ fid, activeBoatLevel: level })
-            onSelect(level)
+            const res = await fetch('/api/boat/select', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userId || fid.toString(), tier: level })
+            })
+            const data = await res.json()
+            if (data.activeTier) {
+                onSelect(level === 10 ? 1 : level === 20 ? 2 : 3)
+            }
         } catch (e) { console.error(e) }
     }
 
     const handleFreeMode = async () => {
-        if (!fid) return
         try {
-            await api.saveUser({ fid, activeBoatLevel: 0 })
+            await fetch('/api/boat/select', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userId || fid.toString(), tier: 'FREE' })
+            })
             onFreeMode()
         } catch (e) { console.error(e) }
     }
-    return (
-        <div className="flex flex-col items-center justify-center p-6 space-y-8 animate-fade-in max-w-sm mx-auto min-h-screen bg-hex-pattern">
-            <div className="text-center space-y-2 bg-[#0c4a6e]/80 p-6 rounded-[2.5rem] border-2 border-[#0ea5e9]/50 backdrop-blur-md shadow-2xl">
-                <h2 className="text-4xl font-black text-white italic tracking-tighter drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]">CHOOSE YOUR MODE</h2>
-                <p className="text-cyan-300 text-[10px] uppercase font-black tracking-[0.3em] opacity-80">Gate Verification Required</p>
-            </div>
 
-            <div className="grid grid-cols-1 gap-4 w-full">
-                {BOATS.map((boat) => (
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[#001226] p-4">
+            <h1 className="text-3xl font-black text-white mb-8">SELECT YOUR VESSEL</h1>
+            
+            <div className="grid grid-cols-1 gap-4 w-full max-w-md">
+                {boats.map((boat) => (
                     <button
                         key={boat.id}
                         onClick={() => handleSelect(boat)}
-                        className={`group relative flex flex-col p-6 bg-[#1e293b]/90 border-b-8 border-[#0c4a6e] hover:border-b-4 hover:translate-y-1 rounded-[2rem] transition-all shadow-2xl overflow-hidden`}
+                        className="bg-[#075985] p-6 rounded-3xl border-4 border-[#0ea5e9] text-left hover:scale-105 transition-transform shadow-xl"
                     >
-                        <div className="flex justify-between items-center z-10 w-full">
-                            <div className="text-left">
-                                <p className="text-white font-black text-xl uppercase italic tracking-tighter leading-none mb-2">{boat.name}</p>
-                                <div className="flex gap-2">
-                                    <span className={`text-[10px] font-black text-cyan-400 bg-cyan-400/10 px-3 py-1 rounded-full border border-cyan-400/20`}>
-                                        {boat.rate} FISH/HR
-                                    </span>
-                                </div>
-                            </div>
-                            <div className={`bg-[#FDE047] text-black px-5 py-2 rounded-2xl font-black shadow-lg border-b-4 border-[#A16207]`}>
-                                ${boat.price}
-                            </div>
-                        </div>
-                        {/* Visual Icon */}
-                        <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-125 transition-transform">
                             <span className="text-7xl">
                                 {boat.id === 'boat1' ? '🚤' : boat.id === 'boat2' ? '🚢' : '🛳️'}
                             </span>
@@ -98,6 +89,6 @@ export default function BoatSelection({
                 <div className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_#22D3EE]"></div>
                 <span className="text-[10px] font-black uppercase tracking-wider opacity-60">Secure USDC Checkout</span>
             </div>
-        </div>
+        </div >
     )
 }
