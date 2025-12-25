@@ -15,6 +15,9 @@ import BoosterPanel from '@/components/Fishing/BoosterPanel';
 import GlobalStats from '@/components/Home/GlobalStats';
 import { MenuDrawer } from '@/components/Home/MenuDrawer';
 import { ConvertMenu } from '@/components/Home/ConvertMenu';
+import { StatsMenu } from '@/components/Home/StatsMenu';
+import { InventoryMenu } from '@/components/Home/InventoryMenu';
+import { InviteMenu } from '@/components/Home/InviteMenu';
 
 import { api } from '@/services/api';
 import { BOAT_CONFIG } from '@/services/mining.service';
@@ -98,6 +101,9 @@ export default function MainGameScreen() {
   const [isSpinOpen, setIsSpinOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isConvertOpen, setIsConvertOpen] = useState(false)
+  const [isStatsOpen, setIsStatsOpen] = useState(false)
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false)
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
 
   // 1. Load Data on Mount
   useEffect(() => {
@@ -355,9 +361,9 @@ export default function MainGameScreen() {
         onClose={() => setIsMenuOpen(false)}
         onOpenSwap={() => setIsSwapOpen(true)}
         onOpenSpin={() => setIsSpinOpen(true)}
-        onOpenStats={() => alert("Statistics feature coming soon!")}
-        onOpenInvite={() => alert("Invite & Earn feature coming soon!")}
-        onOpenInventory={() => alert("Inventory feature coming soon!")}
+        onOpenStats={() => setIsStatsOpen(true)}
+        onOpenInvite={() => setIsInviteOpen(true)}
+        onOpenInventory={() => setIsInventoryOpen(true)}
       />
 
       {/* Headless Controller */}
@@ -469,10 +475,16 @@ export default function MainGameScreen() {
         {/* Catch Notification Popup */}
         {catchNotification && (
           <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-xl border-2 border-yellow-400/50 p-4 rounded-2xl flex flex-col items-center gap-1 animate-bounce-in shadow-[0_0_30px_rgba(250,204,21,0.4)]">
-            <span className="text-3xl">🐟</span>
-            <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">You Caught!</p>
-            <p className="text-sm font-black">{catchNotification.rarity}</p>
-            <p className="text-xs font-bold text-green-400">+{catchNotification.value} Fish</p>
+            <span className="text-3xl">
+              {catchNotification.rarity === 'JUNK' ? (Math.random() > 0.5 ? '👟' : '🥫') : '🐟'}
+            </span>
+            <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">
+              {catchNotification.rarity === 'JUNK' ? 'You Reeled In!' : 'You Caught!'}
+            </p>
+            <p className="text-sm font-black">{catchNotification.rarity === 'JUNK' ? (Math.random() > 0.5 ? 'Old Boot' : 'Empty Can') : catchNotification.rarity}</p>
+            <p className="text-xs font-bold text-green-400">
+              +{catchNotification.value} {catchNotification.rarity === 'JUNK' ? 'Scrap' : 'Fish'}
+            </p>
           </div>
         )}
       </div>
@@ -532,6 +544,32 @@ export default function MainGameScreen() {
         canSpinDaily={canSpinDaily}
         nextDailySpin={lastDailySpin + (24 * 3600 * 1000)}
         onSpinSuccess={handleSpinWin}
+      />
+
+      <StatsMenu
+        isOpen={isStatsOpen}
+        onClose={() => setIsStatsOpen(false)}
+        stats={{
+          totalCaught: minedFish,
+          xp,
+          level: currentLevel,
+          rodLevel: rodLevel,
+          boatLevel: activeBoatLevel
+        }}
+      />
+
+      <InventoryMenu
+        isOpen={isInventoryOpen}
+        onClose={() => setIsInventoryOpen(false)}
+        rodLevel={rodLevel}
+        boatLevel={activeBoatLevel}
+      />
+
+      <InviteMenu
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        referralCount={referralCount}
+        fid={fid}
       />
     </div>
   )

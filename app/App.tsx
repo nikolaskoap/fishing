@@ -57,7 +57,7 @@ export default function App() {
             )}
 
             {view === 'FREE' && (
-                <FreeModeScreen />
+                <FreeModeScreen onPurchaseBoat={() => setView('BOAT')} />
             )}
         </main>
     )

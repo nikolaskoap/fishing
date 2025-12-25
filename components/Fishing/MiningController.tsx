@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-export type FishRarity = 'COMMON' | 'UNCOMMON' | 'EPIC' | 'LEGENDARY'
+export type FishRarity = 'COMMON' | 'UNCOMMON' | 'EPIC' | 'LEGENDARY' | 'JUNK'
 
 export interface FishCatch {
     id: string
@@ -15,7 +15,8 @@ const FISH_VALUES: Record<FishRarity, number> = {
     LEGENDARY: 10,
     EPIC: 5,
     UNCOMMON: 3,
-    COMMON: 1
+    COMMON: 1,
+    JUNK: 0.1
 }
 
 interface MiningControllerProps {
