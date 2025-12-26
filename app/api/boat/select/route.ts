@@ -1,7 +1,9 @@
 import { redis } from '@/lib/redis'
 import { BOAT_CONFIG } from '@/lib/constants'
 import { NextRequest, NextResponse } from 'next/server'
-import { BoatTier } from '../../../../types/backend'
+// type BoatTier is defined locally to avoid build errors
+type BoatTier = 0 | 10 | 20 | 50;
+
 
 export async function POST(req: NextRequest) {
     try {
