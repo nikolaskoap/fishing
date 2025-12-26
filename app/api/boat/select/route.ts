@@ -1,7 +1,7 @@
 import { redis } from '@/lib/redis'
 import { BOAT_CONFIG } from '@/lib/constants'
 import { NextRequest, NextResponse } from 'next/server'
-import { BoatTier } from '@/types/backend'
+import { BoatTier } from '../../../../types/backend'
 
 export async function POST(req: NextRequest) {
     try {
