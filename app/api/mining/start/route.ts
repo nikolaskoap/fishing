@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
         const { userId } = await req.json()
         if (!userId) return NextResponse.json({ error: 'Missing UserID' }, { status: 400 })
 
-        const userData = await redis.hgetall(`user:${userId}`)
+        const userData: any = await redis.hgetall(`user:${userId}`)
         if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
         const boatLevel = parseInt(userData.activeBoatLevel || "0")
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         const hourStart = parseInt(userData.hourStart || "0")
 
         if (now - hourStart >= 3600000 || !bucket) {
-            const newBucket = generateBucket(config.hourlyFishCap)
+            const newBucket = generateBucket(config.fishPerHour)
             bucket = JSON.stringify(newBucket)
             await redis.hset(`user:${userId}`, {
                 distributionBucket: bucket,
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
             sessionActive: true,
-            fishCapPerHour: config.hourlyFishCap
+            fishCapPerHour: config.fishPerHour
         })
     } catch (error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

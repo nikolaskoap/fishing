@@ -1,6 +1,6 @@
 import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
-import { v4 as uuidv4 } from 'uuid'
+import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
     try {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
         let userId = await redis.get(`wallet:${walletAddress}:uid`)
 
         if (!userId) {
-            userId = uuidv4()
+            userId = crypto.randomUUID()
             await redis.set(`wallet:${walletAddress}:uid`, userId)
             await redis.hset(`user:${userId}`, {
                 id: userId,

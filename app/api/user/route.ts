@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
         const now = Date.now()
         const hourStart = parseInt(userData.hourStart || "0")
         const boatLevel = parseInt(userData.activeBoatLevel || "0")
-        const config = BOAT_CONFIG[boatLevel]
+        const config = BOAT_CONFIG[boatLevel as keyof typeof BOAT_CONFIG]
 
         if (now - hourStart >= 3600000 && boatLevel > 0) {
             const newBucket = generateBucket(config.fishPerHour)

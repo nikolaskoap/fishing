@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid swap amount' }, { status: 400 })
         }
 
-        const userData = await redis.hgetall(`user:${userId}`)
+        const userData: any = await redis.hgetall(`user:${userId}`)
         const currentBalance = parseFloat(userData.canFishBalance || "0")
 
         if (currentBalance < swapAmount) {

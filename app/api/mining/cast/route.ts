@@ -1,5 +1,5 @@
 import { redis } from '@/lib/redis'
-import { BOAT_CONFIG, FISH_VALUE } from '@/lib/constants'
+import { BOAT_CONFIG, FISH_VALUES } from '@/lib/constants'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
         const { userId } = await req.json()
         if (!userId) return NextResponse.json({ error: 'Missing UserID' }, { status: 400 })
 
-        const userData = await redis.hgetall(`user:${userId}`)
+        const userData: any = await redis.hgetall(`user:${userId}`)
         if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
         // 1. Session Check
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
         // 3. Hourly Cap Check
         const hourlyProgress = parseInt(userData.hourlyProgress || "0")
-        if (hourlyProgress >= config.hourlyFishCap) {
+        if (hourlyProgress >= config.fishPerHour) {
             return NextResponse.json({ status: 'CAP_REACHED' })
         }
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
         if (index >= bucket.length) return NextResponse.json({ status: 'CAP_REACHED' })
 
         const fishType = bucket[index]
-        const fishValue = FISH_VALUE[fishType as keyof typeof FISH_VALUE] || 1
+        const fishValue = FISH_VALUES[fishType as keyof typeof FISH_VALUES] || 1
 
         // Update User State
         const newMinedFish = parseFloat(userData.minedFish || "0") + fishValue
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
             },
             hourlyProgress: {
                 current: newProgress,
-                max: config.hourlyFishCap
+                max: config.fishPerHour
             }
         })
     } catch (error) {

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
         if (!userId || isNaN(selectedTier)) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
 
-        const userData = await redis.hgetall(`user:${userId}`)
+        const userData: any = await redis.hgetall(`user:${userId}`)
         if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
         if (userData.socialVerified !== "true") {
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         await redis.hset(`user:${userId}`, {
             activeBoatLevel: selectedTier.toString(),
             mode: selectedTier === 0 ? "FREE" : "PAID",
-            hourlyFishCap: config.hourlyFishCap.toString()
+            fishCapPerHour: config.fishPerHour.toString()
         })
 
         return NextResponse.json({

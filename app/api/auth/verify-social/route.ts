@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
 
         if (!userId) return NextResponse.json({ error: 'Missing UserID' }, { status: 400 })
 
-        const userData = await redis.hgetall(`user:${userId}`)
+        const userData: any = await redis.hgetall(`user:${userId}`)
         if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
         // Check if already locked

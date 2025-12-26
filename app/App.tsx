@@ -8,12 +8,16 @@ import BoatSelectionGate from '../screens/BoatSelectionGate'
 import MainGameScreen from '../screens/MainGameScreen'
 import FreeModeScreen from '../screens/FreeModeScreen'
 import { useAccount } from 'wagmi'
+import { useFrame } from '@/components/farcaster-provider'
 
 type ScreenState = 'SPLASH' | 'CONNECT' | 'FOLLOW' | 'BOAT' | 'GAME' | 'FREE'
 
 export default function App() {
     const [view, setView] = useState<ScreenState>('SPLASH')
     const { isConnected } = useAccount()
+    const { context } = useFrame()
+    const fid = context?.user.fid
+    const userId = context?.user.username || fid?.toString()
 
     // Handle Splash Finish
     const handleSplashFinish = () => {
@@ -47,7 +51,9 @@ export default function App() {
 
             {view === 'BOAT' && (
                 <BoatSelectionGate
-                    onSelect={(boat) => setView('GAME')}
+                    fid={fid || 0}
+                    userId={userId}
+                    onSelect={(level) => setView('GAME')}
                     onFreeMode={() => setView('FREE')}
                 />
             )}
