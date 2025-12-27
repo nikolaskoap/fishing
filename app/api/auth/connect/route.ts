@@ -39,14 +39,13 @@ export async function POST(req: NextRequest) {
 
             // Auto-upgrade if is developer but not yet verified/boatless
             if (isDeveloper(fid) && (userData.socialVerified !== "true" || userData.activeBoatLevel === "0")) {
-                await redis.hset(userKey, {
+                const upgradeData = {
                     socialVerified: "true",
                     activeBoatLevel: "50",
                     mode: "PAID"
-                })
-                userData.socialVerified = "true"
-                userData.activeBoatLevel = "50"
-                userData.mode = "PAID"
+                }
+                await redis.hset(userKey, upgradeData)
+                userData = { ...userData, ...upgradeData }
             }
         }
 

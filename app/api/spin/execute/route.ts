@@ -1,55 +1,79 @@
 import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
     try {
-        const { fid } = await req.json()
-        if (!fid) return NextResponse.json({ error: 'Missing FID' }, { status: 400 })
+        const { userId } = await req.json()
+        if (!userId) return NextResponse.json({ error: 'Missing UserID' }, { status: 400 })
 
-        const userKey = `user:${fid}`
-        const userData: any = await redis.hgetall(userKey)
-        if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        // 1. Session Check
+        const sessionActive = await redis.exists(`auth:session:${userId}`)
+        if (!sessionActive) return NextResponse.json({ error: 'UNAUTHORIZED_SESSION' }, { status: 401 })
 
-        const tickets = parseInt(userData.spinTickets || "0")
-        if (tickets <= 0) return NextResponse.json({ error: 'No tickets' }, { status: 400 })
+        const userKey = `user:${userId}`
 
-        // 1. Rigged Probability Server-Side
-        const rand = Math.random() * 100
-        let prize = 0
-
-        if (rand < 60) { // 60% Try Again (Common)
-            prize = 0
-        } else {
-            const winRand = Math.random() * 100
-            if (winRand < 80) prize = 0.05 // Common win
-            else if (winRand < 95) prize = 0.5 // Uncommon
-            else if (winRand < 99) prize = 5 // Rare
-            else prize = 50 // Legendary
+        // 2. Ticket Burn (Atomic)
+        const tickets = await redis.hincrby(userKey, 'spinTickets', -1)
+        if (tickets < 0) {
+            await redis.hincrby(userKey, 'spinTickets', 1) // Refund if failed
+            return NextResponse.json({ error: 'NO_TICKETS' }, { status: 400 })
         }
 
-        // 2. Update Balance & Tickets
-        const newTickets = tickets - 1
-        const newMinedFish = parseFloat(userData.minedFish || "0") + prize
+        // 3. Secure RNG & Prize Calculation
+        // Legendary: 100 USDC, Epic: 50, Rare: 25, Uncommon: 10, Common: small
+        const roll = crypto.randomInt(0, 10000)
+        let prize = 0
+        let rarity = 'TRY_AGAIN'
 
-        await redis.hset(userKey, {
-            spinTickets: newTickets.toString(),
-            minedFish: newMinedFish.toString(),
-            lastSpinAt: Date.now().toString()
-        })
+        if (roll < 1) { // 0.01%
+            prize = 100
+            rarity = 'LEGENDARY'
+        } else if (roll < 10) { // 0.09%
+            prize = 50
+            rarity = 'EPIC'
+        } else if (roll < 50) { // 0.4%
+            prize = 25
+            rarity = 'RARE'
+        } else if (roll < 200) { // 1.5%
+            prize = 10
+            rarity = 'UNCOMMON'
+        } else if (roll < 1000) { // 8%
+            prize = 0.5 // Common USDC win
+            rarity = 'COMMON'
+        }
 
-        // Audit Log
-        await redis.lpush(`audit:${fid}:spin`, JSON.stringify({
+        // 4. Commit Prize to SEPARATE balance
+        if (prize > 0) {
+            await redis.hincrbyfloat(userKey, 'spin_rewards_usdc', prize)
+        }
+
+        const spinId = crypto.randomUUID()
+        const now = Date.now()
+
+        // 5. Audit Log (Transparency)
+        await redis.lpush(`audit:spin:${userId}`, JSON.stringify({
+            id: spinId,
+            rarity,
             prize,
-            timestamp: Date.now()
+            timestamp: now
         }))
+
+        // Global Economy Tracking
+        if (prize > 0) {
+            await redis.hincrbyfloat('stats:global', 'total_spin_outflow', prize)
+        }
 
         return NextResponse.json({
             success: true,
+            spinId,
+            rarity,
             prize,
-            newTickets,
-            newMinedFish
+            newTickets: tickets,
+            balance: prize > 0 ? (await redis.hget(userKey, 'spin_rewards_usdc')) : null
         })
-    } catch (error) {
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    } catch (error: any) {
+        console.error('Spin Error:', error)
+        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
     }
 }

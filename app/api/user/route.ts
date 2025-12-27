@@ -29,35 +29,42 @@ export async function GET(req: NextRequest) {
                 boosterExpiry: 0,
                 canFishBalance: 0,
                 socialVerified: dev,
-                mode: dev ? "PAID" : "null"
+                mode: dev ? "PAID_USER" : "FREE_USER",
+                isQualified: false
             })
         }
 
         // Backend Driven: Check if hour has passed to refresh bucket
+        // ONLY if user is PAID_USER
+        const mode = userData.mode || "FREE_USER"
         const now = Date.now()
         const hourStart = parseInt(userData.hourStart || "0")
         const boatLevel = parseInt(userData.activeBoatLevel || "0")
         const config = BOAT_CONFIG[boatLevel as keyof typeof BOAT_CONFIG]
 
-        if (now - hourStart >= 3600000 && boatLevel > 0) {
-            const newBucket = generateBucket(config.fishPerHour)
-            userData.distributionBucket = JSON.stringify(newBucket)
-            userData.currentIndex = "0"
-            userData.hourStart = now.toString()
-            userData.fishEarnedThisHour = "0"
+        if (mode === "PAID_USER" && boatLevel > 0) {
+            if (now - hourStart >= 3600000 || !userData.distributionBucket) {
+                const newBucket = generateBucket(config.fishPerHour)
+                userData.distributionBucket = JSON.stringify(newBucket)
+                userData.currentIndex = "0"
+                userData.hourStart = now.toString()
+                userData.hourlyProgress = "0" // renamed from fishEarnedThisHour for clarity
 
-            // Persist the new bucket immediately
-            await redis.hset(`user:${fid}`, {
-                distributionBucket: userData.distributionBucket,
-                currentIndex: "0",
-                hourStart: userData.hourStart,
-                fishEarnedThisHour: "0"
-            })
+                // Persist the new bucket immediately
+                await redis.hset(`user:${fid}`, {
+                    distributionBucket: userData.distributionBucket,
+                    currentIndex: "0",
+                    hourStart: userData.hourStart,
+                    hourlyProgress: "0"
+                })
+            }
         }
 
         return NextResponse.json({
             ...userData,
-            invitees: invitees || []
+            invitees: invitees || [],
+            socialVerified: userData.socialVerified === "true",
+            isQualified: userData.isQualified === "true"
         })
     } catch (error) {
         console.error('Redis Error:', error)
@@ -68,13 +75,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
-        const { fid, minedFish, canFishBalance, rodLevel, activeBoatLevel, boosterExpiry, walletAddress, xp, spinTickets, lastDailySpin, referralCount, referrerFid } = body
+        const { fid, walletAddress, referrerFid } = body
 
         if (!fid) {
             return NextResponse.json({ error: 'Missing FID' }, { status: 400 })
         }
 
-        // Referral Logic Integration
+        // Session Check
+        const sessionActive = await redis.exists(`auth:session:${fid}`)
+        if (!sessionActive && !isDeveloper(fid)) {
+            return NextResponse.json({ error: 'UNAUTHORIZED_SESSION' }, { status: 401 })
+        }
+
+        // Referral Logic Integration (Only for new users)
         if (referrerFid && referrerFid !== fid) {
             const alreadyExists = await redis.exists(`user:${fid}`)
             const alreadyReferred = await redis.get(`user:${fid}:referred_by`)
@@ -86,24 +99,15 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Save to Redis (Limited fields allowed via POST from frontend)
+        // ONLY allow non-gameplay critical fields to be updated via this route
         const dataToSave: any = {
-            lastSeen: Date.now()
+            lastSeen: Date.now().toString()
         }
-        if (minedFish !== undefined) dataToSave.minedFish = minedFish.toString()
-        if (canFishBalance !== undefined) dataToSave.canFishBalance = canFishBalance.toString()
-        if (rodLevel !== undefined) dataToSave.rodLevel = rodLevel.toString()
-        if (xp !== undefined) dataToSave.xp = xp.toString()
-        if (activeBoatLevel !== undefined) dataToSave.activeBoatLevel = activeBoatLevel.toString()
-        if (boosterExpiry !== undefined) dataToSave.boosterExpiry = boosterExpiry.toString()
-        if (spinTickets !== undefined) dataToSave.spinTickets = spinTickets.toString()
-        if (lastDailySpin !== undefined) dataToSave.lastDailySpin = lastDailySpin.toString()
-        if (referralCount !== undefined) dataToSave.referralCount = referralCount.toString()
         if (walletAddress !== undefined) dataToSave.wallet = walletAddress
 
         await redis.hset(`user:${fid}`, dataToSave)
 
-        return NextResponse.json({ success: true })
+        return NextResponse.json({ success: true, note: "Gameplay fields locked on this endpoint" })
     } catch (error) {
         console.error('Redis Error:', error)
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

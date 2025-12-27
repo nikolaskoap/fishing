@@ -3,7 +3,7 @@ export const APP_URL = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
 export const BOAT_CONFIG = {
   0: { // FREE
     price: 0,
-    catchingRate: 0.05,
+    catchingRate: 0,
     fishPerHour: 0,
     label: "Free Mode"
   },
@@ -26,6 +26,19 @@ export const BOAT_CONFIG = {
     label: "Large Boat"
   }
 } as const;
+
+export const DIFFICULTY_CONFIG = {
+  BASE_DIFFICULTY: 1.0,
+  PLAYER_REDUCTION: 0.001, // 0.1% per player
+  MIN_DIFFICULTY: 0.5
+};
+
+export const GLOBAL_CONFIG = {
+  DAILY_CATCH_CAP: 500,
+  MIN_CAST_INTERVAL: 4000, // 4 seconds
+  REFERRAL_MIN_CASTS: 50,
+  REFERRAL_REWARD_USDC: 1,
+}
 
 export const SWAP_CONFIG = {
   RATE: 100, // 100 CanFish = 5 USDC
