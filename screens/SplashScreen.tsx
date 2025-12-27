@@ -15,13 +15,18 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
     }, [onFinish])
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#075985] overflow-hidden">
-            {/* Ripple/Wave Background Effect */}
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black overflow-hidden">
+            {/* Loading Animation Video */}
             <div className="absolute inset-0 z-0">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] opacity-30">
-                    <div className="w-full h-full animate-[ripple_10s_linear_infinite] rounded-full border border-cyan-400/40"></div>
-                    <div className="absolute inset-0 w-full h-full animate-[ripple_10s_linear_infinite_2s] rounded-full border border-sky-400/30 scale-75"></div>
-                </div>
+                <video
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover mix-blend-screen opacity-100"
+                >
+                    <source src="/assets/animation-loading/Make%20the%20images%20animated%20before%20combining%20them.mp4" type="video/mp4" />
+                </video>
             </div>
 
             {/* Logo Container */}

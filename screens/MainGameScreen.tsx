@@ -40,7 +40,6 @@ export default function MainGameScreen() {
   const [xp, setXp] = useState(0)
   const [spinTickets, setSpinTickets] = useState(0)
   const [lastDailySpin, setLastDailySpin] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
 
   // Bucket Persistence
   const [distributionBucket, setDistributionBucket] = useState<FishRarity[]>([])
@@ -168,12 +167,8 @@ export default function MainGameScreen() {
           setMinedFish(savedFish)
           setCanFishBalance(savedCanFish)
         }
-
-        // Simulasikan waktu loading untuk video animasi (misal 3 detik)
-        setTimeout(() => setIsLoading(false), 3000)
       } catch (e) {
         console.error("Load error", e)
-        setIsLoading(false)
       }
     }
     loadUserData()
@@ -574,14 +569,14 @@ export default function MainGameScreen() {
             </div>
 
             <div className="text-center">
-              <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">
+              <p className="text-[10px] font-black text-yellow-300 uppercase tracking-widest">
                 {catchNotification.label || (catchNotification.rarity === 'JUNK' ? 'You Reeled In!' : 'You Caught!')}
               </p>
-              <p className="text-sm font-black uppercase italic">
+              <p className="text-sm font-black uppercase italic text-white">
                 {catchNotification.subLabel || catchNotification.rarity}
               </p>
               {catchNotification.value > 0 && (
-                <p className="text-xs font-bold text-green-400 mt-1 bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
+                <p className="text-xs font-bold text-green-300 mt-1 bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
                   +{catchNotification.value} {catchNotification.rarity === 'JUNK' ? 'Scrap' : 'Fish'}
                 </p>
               )}
@@ -685,36 +680,6 @@ export default function MainGameScreen() {
         referralCount={referralCount}
         fid={fid || 0}
       />
-
-      {/* LOADING SCREEN VIDEO OVERLAY */}
-      {isLoading && (
-        <div className="absolute inset-0 z-[200] bg-black flex items-center justify-center overflow-hidden">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover mix-blend-screen opacity-90"
-          >
-            <source src="/assets/animation-loading/Make the images animated before combining them.mp4" type="video/mp4" />
-          </video>
-          <div className="absolute bottom-16 left-0 right-0 flex flex-col items-center gap-2">
-            <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/5">
-              <div className="h-full bg-cyan-500 animate-[loading_3s_ease-in-out]"></div>
-            </div>
-            <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.3em] animate-pulse">Initializing Ocean...</p>
-          </div>
-
-          <style jsx>{`
-            @keyframes loading {
-              0% { width: 0%; }
-              100% { width: 100%; }
-            }
-          `}</style>
-        </div>
-      )}
     </div>
   )
-
 }
-
