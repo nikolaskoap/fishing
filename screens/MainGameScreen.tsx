@@ -40,6 +40,7 @@ export default function MainGameScreen() {
   const [xp, setXp] = useState(0)
   const [spinTickets, setSpinTickets] = useState(0)
   const [lastDailySpin, setLastDailySpin] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Bucket Persistence
   const [distributionBucket, setDistributionBucket] = useState<FishRarity[]>([])
@@ -167,7 +168,13 @@ export default function MainGameScreen() {
           setMinedFish(savedFish)
           setCanFishBalance(savedCanFish)
         }
-      } catch (e) { console.error("Load error", e) }
+
+        // Simulasikan waktu loading untuk video animasi (misal 3 detik)
+        setTimeout(() => setIsLoading(false), 3000)
+      } catch (e) {
+        console.error("Load error", e)
+        setIsLoading(false)
+      }
     }
     loadUserData()
   }, [fid, address])
@@ -553,21 +560,32 @@ export default function MainGameScreen() {
 
         {/* Catch Notification Popup */}
         {catchNotification && (
-          <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-xl border-2 border-yellow-400/50 p-4 rounded-2xl flex flex-col items-center gap-1 animate-bounce-in shadow-[0_0_30px_rgba(250,204,21,0.4)]">
-            <span className="text-3xl">
-              {catchNotification.rarity === 'JUNK' ? (Math.random() > 0.5 ? '👟' : '🥫') : '🐟'}
-            </span>
-            <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">
-              {catchNotification.label || (catchNotification.rarity === 'JUNK' ? 'You Reeled In!' : 'You Caught!')}
-            </p>
-            <p className="text-sm font-black">
-              {catchNotification.subLabel || (catchNotification.rarity === 'JUNK' ? (Math.random() > 0.5 ? 'Old Boot' : 'Empty Can') : catchNotification.rarity)}
-            </p>
-            {catchNotification.value > 0 && (
-              <p className="text-xs font-bold text-green-400">
-                +{catchNotification.value} {catchNotification.rarity === 'JUNK' ? 'Scrap' : 'Fish'}
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-xl border-2 border-yellow-400/50 p-4 rounded-3xl flex flex-col items-center gap-2 animate-bounce-in shadow-[0_0_40px_rgba(250,204,21,0.5)] min-w-[180px]">
+            <div className="relative w-24 h-24 overflow-hidden rounded-2xl border-2 border-white/10 bg-white/5">
+              {catchNotification.rarity === 'COMMON' && <img src="/assets/image/fish cummon.jpg" className="w-full h-full object-cover" alt="Common Fish" />}
+              {catchNotification.rarity === 'UNCOMMON' && <img src="/assets/image/fish uncommon.jpg" className="w-full h-full object-cover" alt="Uncommon Fish" />}
+              {catchNotification.rarity === 'EPIC' && <img src="/assets/image/fish rare.jpg" className="w-full h-full object-cover" alt="Epic Fish" />}
+              {catchNotification.rarity === 'LEGENDARY' && <img src="/assets/image/legendary fish.jpg" className="w-full h-full object-cover" alt="Legendary Fish" />}
+              {catchNotification.rarity === 'JUNK' && (
+                <div className="text-5xl flex items-center justify-center h-full">
+                  {Math.random() > 0.5 ? '👟' : '🥫'}
+                </div>
+              )}
+            </div>
+
+            <div className="text-center">
+              <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">
+                {catchNotification.label || (catchNotification.rarity === 'JUNK' ? 'You Reeled In!' : 'You Caught!')}
               </p>
-            )}
+              <p className="text-sm font-black uppercase italic">
+                {catchNotification.subLabel || catchNotification.rarity}
+              </p>
+              {catchNotification.value > 0 && (
+                <p className="text-xs font-bold text-green-400 mt-1 bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
+                  +{catchNotification.value} {catchNotification.rarity === 'JUNK' ? 'Scrap' : 'Fish'}
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -667,6 +685,34 @@ export default function MainGameScreen() {
         referralCount={referralCount}
         fid={fid || 0}
       />
+
+      {/* LOADING SCREEN VIDEO OVERLAY */}
+      {isLoading && (
+        <div className="absolute inset-0 z-[200] bg-black flex items-center justify-center overflow-hidden">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover mix-blend-screen opacity-90"
+          >
+            <source src="/assets/animation-loading/Make the images animated before combining them.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute bottom-16 left-0 right-0 flex flex-col items-center gap-2">
+            <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/5">
+              <div className="h-full bg-cyan-500 animate-[loading_3s_ease-in-out]"></div>
+            </div>
+            <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.3em] animate-pulse">Initializing Ocean...</p>
+          </div>
+
+          <style jsx>{`
+            @keyframes loading {
+              0% { width: 0%; }
+              100% { width: 100%; }
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   )
 
