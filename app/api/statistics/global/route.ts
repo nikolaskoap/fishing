@@ -26,7 +26,8 @@ export async function GET() {
             ).toFixed(2),
             timestamp: Date.now()
         })
-    } catch (error) {
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    } catch (error: any) {
+        console.error('Global Stats Error:', error)
+        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
     }
 }

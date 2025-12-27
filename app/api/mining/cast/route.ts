@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
 
         const boatLevel = parseInt(userData.activeBoatLevel || "0") as keyof typeof BOAT_CONFIG
         const config = BOAT_CONFIG[boatLevel]
+        if (!config) {
+            return NextResponse.json({ error: 'INVALID_BOAT_CONFIG', boatLevel }, { status: 500 })
+        }
 
         // 4. Caps Check (Hourly & Daily)
         const hourlyCatches = parseInt(userData.hourlyCatches || "0")

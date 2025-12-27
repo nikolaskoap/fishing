@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
             mode: userData.mode,
             socialVerified: userData.socialVerified === "true"
         })
-    } catch (error) {
+    } catch (error: any) {
         console.error('Verify Error:', error)
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
     }
 }

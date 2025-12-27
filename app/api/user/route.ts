@@ -43,14 +43,13 @@ export async function GET(req: NextRequest) {
         const config = BOAT_CONFIG[boatLevel as keyof typeof BOAT_CONFIG]
 
         if (mode === "PAID_USER" && boatLevel > 0) {
-            if (now - hourStart >= 3600000 || !userData.distributionBucket) {
+            if (config && (now - hourStart >= 3600000 || !userData.distributionBucket)) {
                 const newBucket = generateBucket(config.fishPerHour)
                 userData.distributionBucket = JSON.stringify(newBucket)
                 userData.currentIndex = "0"
                 userData.hourStart = now.toString()
-                userData.hourlyProgress = "0" // renamed from fishEarnedThisHour for clarity
+                userData.hourlyProgress = "0"
 
-                // Persist the new bucket immediately
                 await redis.hset(`user:${fid}`, {
                     distributionBucket: userData.distributionBucket,
                     currentIndex: "0",
@@ -66,9 +65,9 @@ export async function GET(req: NextRequest) {
             socialVerified: userData.socialVerified === "true",
             isQualified: userData.isQualified === "true"
         })
-    } catch (error) {
-        console.error('Redis Error:', error)
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    } catch (error: any) {
+        console.error('User GET Error:', error)
+        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
     }
 }
 
@@ -108,8 +107,8 @@ export async function POST(req: NextRequest) {
         await redis.hset(`user:${fid}`, dataToSave)
 
         return NextResponse.json({ success: true, note: "Gameplay fields locked on this endpoint" })
-    } catch (error) {
-        console.error('Redis Error:', error)
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    } catch (error: any) {
+        console.error('User POST Error:', error)
+        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
     }
 }
