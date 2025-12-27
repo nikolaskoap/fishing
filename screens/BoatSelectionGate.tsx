@@ -49,14 +49,27 @@ export default function BoatSelectionGate({ fid, userId, onSelect, onFreeMode }:
             // Developer Bypass: Skip real transaction
             if (dev) {
                 console.log("Developer detected, bypassing payment contract...");
-                const res = await fetch('/api/boat/select', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: userId || fid.toString(), tier: boat.tier })
-                })
-                const data = await res.json()
-                if (data.activeTier) {
-                    onSelect(boat.tier)
+                try {
+                    const res = await fetch('/api/boat/select', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: userId || fid.toString(), tier: boat.tier })
+                    })
+                    const data = await res.json()
+
+                    // Small artificial delay for "feel"
+                    await new Promise(r => setTimeout(r, 800));
+
+                    if (data.activeTier || res.ok) {
+                        onSelect(boat.tier)
+                    } else {
+                        alert("Bypass error: " + (data.error || "Unknown"))
+                    }
+                } catch (e) {
+                    console.error("Dev Bypass Fetch Error", e)
+                    alert("Developer bypass failed to connect to API")
+                } finally {
+                    setPendingTier(null)
                 }
                 return;
             }
