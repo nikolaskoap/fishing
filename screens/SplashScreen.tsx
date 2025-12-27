@@ -15,26 +15,33 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
     }, [onFinish])
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black overflow-hidden">
-            {/* Loading Animation Video */}
-            <div className="absolute inset-0 z-0 flex items-center justify-center bg-black">
-                <video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="max-w-full max-h-full object-contain"
-                >
-                    <source src="/assets/animation-loading/Make%20the%20images%20animated%20before%20combining%20them.mp4" type="video/mp4" />
-                </video>
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#075985] overflow-hidden">
+            {/* Ripple/Wave Background Effect */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] opacity-30">
+                    <div className="w-full h-full animate-[ripple_10s_linear_infinite] rounded-full border border-cyan-400/40"></div>
+                    <div className="absolute inset-0 w-full h-full animate-[ripple_10s_linear_infinite_2s] rounded-full border border-sky-400/30 scale-75"></div>
+                </div>
             </div>
 
-            {/* Optional: Simple Loading Progress Bar at bottom */}
-            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 w-48 space-y-2 text-center">
-                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-cyan-500 animate-[loading_3s_ease-in-out] w-full"></div>
+            {/* Logo Container */}
+            <div className={`relative z-10 transition-all duration-1000 ${isAnimating ? 'opacity-100 scale-110' : 'opacity-0 scale-90'}`}>
+                <div className="flex flex-col items-center space-y-4">
+                    <div className="relative w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-cyan-300 to-sky-500 rounded-[2rem] flex items-center justify-center shadow-[0_0_80px_rgba(34,211,238,0.6)] overflow-hidden border-2 border-white/20">
+                        <span className="text-4xl md:text-6xl">🎣</span>
+                        <div className="absolute inset-0 bg-white/10 animate-[wave_3s_ease-in-out_infinite]"></div>
+                    </div>
+
+                    <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-blue-500 tracking-tighter drop-shadow-2xl">
+                        BASE FISHING
+                    </h1>
+
+                    <div className="flex space-x-2">
+                        <span className="h-1 w-12 bg-cyan-500 rounded-full animate-pulse"></span>
+                        <span className="h-1 w-4 bg-white/20 rounded-full"></span>
+                        <span className="h-1 w-4 bg-white/20 rounded-full"></span>
+                    </div>
                 </div>
-                <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest animate-pulse">Loading Game...</p>
             </div>
 
             <style jsx>{`
