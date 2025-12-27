@@ -1,31 +1,15 @@
 export const APP_URL = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
 
-export const BOAT_CONFIG = {
-  0: { // FREE
-    price: 0,
-    catchingRate: 0,
-    fishPerHour: 0,
-    label: "Free Mode"
-  },
-  10: {
-    price: 10,
-    catchingRate: 0.15,
-    fishPerHour: 100,
-    label: "Small Boat"
-  },
-  20: {
-    price: 20,
-    catchingRate: 0.16,
-    fishPerHour: 150,
-    label: "Medium Boat"
-  },
-  50: {
-    price: 50,
-    catchingRate: 0.20,
-    fishPerHour: 250,
-    label: "Large Boat"
-  }
-} as const;
+export type BoatTier = "SMALL" | "MEDIUM" | "LARGE";
+
+export const BOAT_CONFIG: Record<BoatTier, {
+  price: number
+  catchingRate: number
+}> = {
+  SMALL: { price: 10, catchingRate: 0.15 },
+  MEDIUM: { price: 20, catchingRate: 0.16 },
+  LARGE: { price: 50, catchingRate: 0.20 },
+};
 
 export const DIFFICULTY_CONFIG = {
   BASE_DIFFICULTY: 1.0,
