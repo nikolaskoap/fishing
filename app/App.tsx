@@ -19,6 +19,13 @@ export default function App() {
     const fid = context?.user.fid
     const userId = context?.user.username || fid?.toString()
 
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const { isDeveloper } = require('@/lib/constants');
+            (window as any).isDeveloper = isDeveloper(fid);
+        }
+    }, [fid])
+
     // Handle Splash Finish
     const handleSplashFinish = () => {
         if (!isConnected) {

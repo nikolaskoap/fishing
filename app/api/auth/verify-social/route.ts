@@ -1,5 +1,6 @@
 import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
+import { isDeveloper } from '@/lib/constants'
 
 export async function POST(req: NextRequest) {
     try {
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Logic verification (In prod, we check Farcaster API here)
-        if (followed && recasted) {
+        if (isDeveloper(userId) || (followed && recasted)) {
             const verifiedAt = Date.now().toString()
             await redis.hset(`user:${userId}`, {
                 socialVerified: "true",

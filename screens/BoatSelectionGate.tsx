@@ -41,10 +41,27 @@ export default function BoatSelectionGate({ fid, userId, onSelect, onFreeMode }:
             return
         }
 
+        const dev = typeof window !== 'undefined' && (window as any).isDeveloper;
+
         try {
             setPendingTier(boat.tier)
 
-            // 1. Trigger Payment
+            // Developer Bypass: Skip real transaction
+            if (dev) {
+                console.log("Developer detected, bypassing payment contract...");
+                const res = await fetch('/api/boat/select', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userId || fid.toString(), tier: boat.tier })
+                })
+                const data = await res.json()
+                if (data.activeTier) {
+                    onSelect(boat.tier)
+                }
+                return;
+            }
+
+            // 1. Trigger Payment (Normal User)
             writeContract({
                 address: USDT_ADDRESS,
                 abi: ERC20_ABI,

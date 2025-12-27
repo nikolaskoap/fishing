@@ -340,17 +340,25 @@ export default function MainGameScreen() {
     }
   }
 
-  const handleBuyBooster = () => {
+  const handleBuyBooster = async () => {
     if (!address) return
+    const dev = typeof window !== 'undefined' && (window as any).isDeveloper;
+
     try {
-      writeContract({
-        address: USDT_ADDRESS,
-        abi: ERC20_ABI,
-        functionName: "transfer",
-        args: [PAYMENT_RECIPIENT, parseUnits("5", 6)],
-      })
+      if (dev) {
+        console.log("Developer detected, bypassing booster payment...");
+      } else {
+        writeContract({
+          address: USDT_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: "transfer",
+          args: [PAYMENT_RECIPIENT, parseUnits("5", 6)],
+        })
+      }
+
+      // Update state immediately for devs or after success for others (simplified here for testing)
       setBoosterExpiry(Date.now() + (60 * 60 * 1000))
-      alert("Booster Purchased! +50% Yield for 1 Hour.")
+      alert(dev ? "Developer Boost Activated! (Free)" : "Booster Purchased! +5% Yield for 1 Hour.")
     } catch (e) {
       console.error(e)
       alert("Transaction Failed")
