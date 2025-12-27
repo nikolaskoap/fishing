@@ -59,20 +59,20 @@ export const miningService = {
         return res.json();
     },
 
-    async startMining(userId: string) {
+    async startMining(fid: string) {
         const res = await fetch('/api/mining/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId })
+            body: JSON.stringify({ userId: fid }) // The route still expects 'userId' but it will be the FID
         });
         return res.json();
     },
 
-    async cast(userId: string) {
+    async cast(fid: string) {
         const res = await fetch('/api/mining/cast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId })
+            body: JSON.stringify({ userId: fid }) // The route still expects 'userId' but it will be the FID
         });
         return res.json();
     },

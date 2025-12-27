@@ -3,10 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
     try {
-        const { userId } = await req.json()
-        if (!userId) return NextResponse.json({ error: 'Missing UserID' }, { status: 400 })
+        const { fid } = await req.json()
+        if (!fid) return NextResponse.json({ error: 'Missing FID' }, { status: 400 })
 
-        const userData: any = await redis.hgetall(`user:${userId}`)
+        const userKey = `user:${fid}`
+        const userData: any = await redis.hgetall(userKey)
         if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
         const tickets = parseInt(userData.spinTickets || "0")
@@ -28,17 +29,16 @@ export async function POST(req: NextRequest) {
 
         // 2. Update Balance & Tickets
         const newTickets = tickets - 1
-        // Spin rewards go to spinBalance as per spec
-        const newSpinBalance = parseFloat(userData.spinBalance || "0") + prize
+        const newMinedFish = parseFloat(userData.minedFish || "0") + prize
 
-        await redis.hset(`user:${userId}`, {
+        await redis.hset(userKey, {
             spinTickets: newTickets.toString(),
-            spinBalance: newSpinBalance.toString(),
+            minedFish: newMinedFish.toString(),
             lastSpinAt: Date.now().toString()
         })
 
         // Audit Log
-        await redis.lpush(`audit:${userId}:spin`, JSON.stringify({
+        await redis.lpush(`audit:${fid}:spin`, JSON.stringify({
             prize,
             timestamp: Date.now()
         }))
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
             success: true,
             prize,
             newTickets,
-            newSpinBalance
+            newMinedFish
         })
     } catch (error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

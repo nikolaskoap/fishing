@@ -239,6 +239,9 @@ export default function MainGameScreen() {
           rarity: result.fishType as FishRarity,
           value: result.fishValue
         })
+      } else if (result.status === "SESSION_EXPIRED") {
+        setIsAutoCastActive(false)
+        alert("Session expired. Please restart Auto-Cast.")
       } else if (result.status === "MISS") {
         setCatchNotification({
           rarity: 'JUNK',
@@ -372,9 +375,9 @@ export default function MainGameScreen() {
   // Calculate current effective rate
   const getMiningStats = () => {
     let rate = 0
-    if (activeBoatLevel === 1) rate = 10
-    else if (activeBoatLevel === 2) rate = 25
-    else if (activeBoatLevel === 3) rate = 60
+    if (activeBoatLevel === 10) rate = 10
+    else if (activeBoatLevel === 20) rate = 25
+    else if (activeBoatLevel === 50) rate = 60
 
     let boosterMult = 1.0
     if (Date.now() < boosterExpiry) boosterMult = 1.5
@@ -572,7 +575,20 @@ export default function MainGameScreen() {
       {/* BOTTOM ACTION BAR */}
       <div className="px-4 pb-8 pt-2 grid grid-cols-2 gap-4 bg-gradient-to-t from-[#020617] to-transparent">
         <button
-          onClick={() => setIsAutoCastActive(!isAutoCastActive)}
+          onClick={async () => {
+            if (!isAutoCastActive && activeBoatLevel > 0) {
+              try {
+                const res = await miningService.startMining(userId || fid?.toString() || "");
+                if (res.error) {
+                  alert("Failed to start session: " + res.error);
+                  return;
+                }
+              } catch (e) {
+                console.error("Session start error", e);
+              }
+            }
+            setIsAutoCastActive(!isAutoCastActive);
+          }}
           className={`group relative p-6 rounded-[2.5rem] border-b-8 shadow-xl active:border-b-0 active:translate-y-2 transition-all flex flex-col items-center justify-center gap-1 overflow-hidden
             ${isAutoCastActive
               ? 'bg-[#4ADE80] border-[#166534] text-black ring-4 ring-green-400/50'

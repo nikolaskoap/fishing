@@ -4,11 +4,11 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url)
-        const userId = searchParams.get('userId')
+        const fid = searchParams.get('fid')
 
-        if (!userId) return NextResponse.json({ error: 'Missing UserID' }, { status: 400 })
+        if (!fid) return NextResponse.json({ error: 'Missing FID' }, { status: 400 })
 
-        const userData: any = await redis.hgetall(`user:${userId}`)
+        const userData: any = await redis.hgetall(`user:${fid}`)
         if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
         const totalFish = parseFloat(userData.minedFish || "0")

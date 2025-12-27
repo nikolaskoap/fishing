@@ -10,26 +10,35 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing FID or Wallet' }, { status: 400 })
         }
 
-        // Check if user exists
-        let userId = await redis.get(`wallet:${walletAddress}:uid`)
+        const userKey = `user:${fid}`
+        let userData: any = await redis.hgetall(userKey)
 
-        if (!userId) {
-            userId = crypto.randomUUID()
-            await redis.set(`wallet:${walletAddress}:uid`, userId)
-            await redis.hset(`user:${userId}`, {
-                id: userId,
+        if (!userData) {
+            await redis.hset(userKey, {
+                id: fid.toString(),
                 fid: fid.toString(),
                 walletAddress,
                 socialVerified: "false",
                 mode: "null",
-                createdAt: Date.now().toString()
+                createdAt: Date.now().toString(),
+                minedFish: "0",
+                canFishBalance: "0",
+                rodLevel: "1",
+                activeBoatLevel: "0",
+                xp: "0",
+                spinTickets: "1",
+                lastDailySpin: "0"
             })
+            userData = await redis.hgetall(userKey)
+        } else {
+            // Update wallet address if it changed
+            if (userData.walletAddress !== walletAddress) {
+                await redis.hset(userKey, { walletAddress })
+            }
         }
 
-        const userData = await redis.hgetall(`user:${userId}`)
-
         return NextResponse.json({
-            userId,
+            userId: fid.toString(),
             socialVerified: userData?.socialVerified === "true",
             mode: userData?.mode || null
         })

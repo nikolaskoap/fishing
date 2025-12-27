@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
         const { userId, tier } = await req.json()
         const selectedTier = (tier === 'FREE' ? 0 : parseInt(tier)) as BoatTier
 
-        if (!userId || isNaN(selectedTier)) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+        if (!userId || isNaN(selectedTier)) return NextResponse.json({ error: 'Invalid input (Missing UserID/FID)' }, { status: 400 })
 
         const userData: any = await redis.hgetall(`user:${userId}`)
         if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })

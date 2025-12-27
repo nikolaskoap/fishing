@@ -60,6 +60,10 @@ export async function POST(req: NextRequest) {
             lastCastAt: now.toString()
         })
 
+        // Track Global Stats
+        await redis.incrbyfloat('stats:total_caught', fishValue)
+        await redis.sadd('players:all', userId)
+
         // Audit Log
         await redis.lpush(`audit:${userId}:mining`, JSON.stringify({
             type: fishType,
@@ -69,6 +73,9 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
             status: 'SUCCESS',
+            minedFish: newMinedFish,
+            xp: newXp,
+            currentIndex: (index + 1),
             fish: {
                 type: fishType,
                 value: fishValue

@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(req: NextRequest) {
     try {
         const { userId } = await req.json()
-        if (!userId) return NextResponse.json({ error: 'Missing UserID' }, { status: 400 })
+        if (!userId) return NextResponse.json({ error: 'Missing UserID/FID' }, { status: 400 })
 
         const userData: any = await redis.hgetall(`user:${userId}`)
         if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })

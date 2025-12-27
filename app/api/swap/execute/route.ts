@@ -4,14 +4,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
     try {
-        const { userId, amount } = await req.json()
+        const { fid, amount } = await req.json()
         const swapAmount = parseInt(amount)
 
-        if (!userId || isNaN(swapAmount) || swapAmount < SWAP_CONFIG.MIN_SWAP) {
+        if (!fid || isNaN(swapAmount) || swapAmount < SWAP_CONFIG.MIN_SWAP) {
             return NextResponse.json({ error: 'Invalid swap amount' }, { status: 400 })
         }
 
-        const userData: any = await redis.hgetall(`user:${userId}`)
+        const userData: any = await redis.hgetall(`user:${fid}`)
         const currentBalance = parseFloat(userData.canFishBalance || "0")
 
         if (currentBalance < swapAmount) {
@@ -24,12 +24,12 @@ export async function POST(req: NextRequest) {
 
         const newBalance = currentBalance - swapAmount
 
-        await redis.hset(`user:${userId}`, {
+        await redis.hset(`user:${fid}`, {
             canFishBalance: newBalance.toString()
         })
 
         // Log transaction
-        await redis.lpush(`audit:${userId}:swap`, JSON.stringify({
+        await redis.lpush(`audit:${fid}:swap`, JSON.stringify({
             burned: swapAmount,
             received: receivedUSDC,
             timestamp: Date.now()

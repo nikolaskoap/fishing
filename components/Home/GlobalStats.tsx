@@ -1,15 +1,34 @@
-'use client'
-
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 
 export default function GlobalStats() {
-    // Simulate some global stats for now
-    const stats = {
-        difficulty: "99.8%",
-        totalSupply: "1,245,670",
-        burnToday: "12,400",
-        activeMiners: 124
-    }
+    const [stats, setStats] = useState({
+        difficulty: "0%",
+        totalCaught: "0",
+        burnedFish: "0",
+        totalPlayers: 0
+    })
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/statistics/global')
+                const data = await res.json()
+                if (data && !data.error) {
+                    setStats({
+                        difficulty: `${data.difficulty}%`,
+                        totalCaught: parseFloat(data.totalCaught).toLocaleString(),
+                        burnedFish: parseFloat(data.burnedFish).toLocaleString(),
+                        totalPlayers: data.totalPlayers
+                    })
+                }
+            } catch (e) {
+                console.error("Failed to fetch global stats", e)
+            }
+        }
+        fetchStats()
+        const interval = setInterval(fetchStats, 60000) // Refresh every minute
+        return () => clearInterval(interval)
+    }, [])
 
     return (
         <div className="w-full max-w-md px-4 py-2">
@@ -25,18 +44,18 @@ export default function GlobalStats() {
                         </div>
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Total Supply</p>
-                        <p className="text-sm font-mono text-white font-bold">{stats.totalSupply} <span className="text-[8px] text-gray-600">FISH</span></p>
+                        <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Total Caught</p>
+                        <p className="text-sm font-mono text-white font-bold">{stats.totalCaught} <span className="text-[8px] text-gray-600">FISH</span></p>
                     </div>
                     <div className="space-y-1 border-t border-white/5 pt-2">
-                        <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Fish Burned Today</p>
-                        <p className="text-sm font-mono text-orange-400 font-bold">{stats.burnToday}</p>
+                        <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Fish Burned</p>
+                        <p className="text-sm font-mono text-orange-400 font-bold">{stats.burnedFish}</p>
                     </div>
                     <div className="space-y-1 border-t border-white/5 pt-2">
-                        <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Global Miners</p>
+                        <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Global Players</p>
                         <div className="flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                            <p className="text-sm font-mono text-white font-bold">{stats.activeMiners}</p>
+                            <p className="text-sm font-mono text-white font-bold">{stats.totalPlayers}</p>
                         </div>
                     </div>
                 </div>

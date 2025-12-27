@@ -83,19 +83,19 @@ export async function POST(req: NextRequest) {
         }
 
         // Save to Redis (Limited fields allowed via POST from frontend)
-        const dataToSave = {
-            minedFish,
-            canFishBalance: canFishBalance || 0,
-            rodLevel,
-            xp: xp || 0,
-            activeBoatLevel: activeBoatLevel || 0,
-            boosterExpiry: boosterExpiry || 0,
-            lastSeen: Date.now(),
-            ...(spinTickets !== undefined && { spinTickets }),
-            ...(lastDailySpin !== undefined && { lastDailySpin }),
-            ...(referralCount !== undefined && { referralCount }),
-            ...(walletAddress && { wallet: walletAddress })
+        const dataToSave: any = {
+            lastSeen: Date.now()
         }
+        if (minedFish !== undefined) dataToSave.minedFish = minedFish.toString()
+        if (canFishBalance !== undefined) dataToSave.canFishBalance = canFishBalance.toString()
+        if (rodLevel !== undefined) dataToSave.rodLevel = rodLevel.toString()
+        if (xp !== undefined) dataToSave.xp = xp.toString()
+        if (activeBoatLevel !== undefined) dataToSave.activeBoatLevel = activeBoatLevel.toString()
+        if (boosterExpiry !== undefined) dataToSave.boosterExpiry = boosterExpiry.toString()
+        if (spinTickets !== undefined) dataToSave.spinTickets = spinTickets.toString()
+        if (lastDailySpin !== undefined) dataToSave.lastDailySpin = lastDailySpin.toString()
+        if (referralCount !== undefined) dataToSave.referralCount = referralCount.toString()
+        if (walletAddress !== undefined) dataToSave.wallet = walletAddress
 
         await redis.hset(`user:${fid}`, dataToSave)
 

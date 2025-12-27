@@ -58,7 +58,7 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
             const res = await fetch('/api/spin/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
+                body: JSON.stringify({ fid: userId }) // userId contains FID
             })
             const data = await res.json()
 
