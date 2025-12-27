@@ -53,7 +53,7 @@ export default function BoatSelectionGate({ fid, userId, onSelect, onFreeMode }:
                     const res = await fetch('/api/boat/select', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: userId || fid.toString(), tier: boat.tier })
+                        body: JSON.stringify({ userId: fid.toString(), tier: boat.tier })
                     })
                     const data = await res.json()
 
