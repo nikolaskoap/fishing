@@ -1,6 +1,6 @@
 import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
+import { isDeveloper } from '@/lib/constants'
 
 export async function POST(req: NextRequest) {
     try {
@@ -14,17 +14,18 @@ export async function POST(req: NextRequest) {
         let userData: any = await redis.hgetall(userKey)
 
         if (!userData) {
+            const dev = isDeveloper(fid)
             await redis.hset(userKey, {
                 id: fid.toString(),
                 fid: fid.toString(),
                 walletAddress,
-                socialVerified: "false",
-                mode: "null",
+                socialVerified: dev ? "true" : "false",
+                mode: dev ? "PAID" : "null",
                 createdAt: Date.now().toString(),
                 minedFish: "0",
                 canFishBalance: "0",
                 rodLevel: "1",
-                activeBoatLevel: "0",
+                activeBoatLevel: dev ? "50" : "0",
                 xp: "0",
                 spinTickets: "1",
                 lastDailySpin: "0"
@@ -34,6 +35,18 @@ export async function POST(req: NextRequest) {
             // Update wallet address if it changed
             if (userData.walletAddress !== walletAddress) {
                 await redis.hset(userKey, { walletAddress })
+            }
+
+            // Auto-upgrade if is developer but not yet verified/boatless
+            if (isDeveloper(fid) && (userData.socialVerified !== "true" || userData.activeBoatLevel === "0")) {
+                await redis.hset(userKey, {
+                    socialVerified: "true",
+                    activeBoatLevel: "50",
+                    mode: "PAID"
+                })
+                userData.socialVerified = "true"
+                userData.activeBoatLevel = "50"
+                userData.mode = "PAID"
             }
         }
 

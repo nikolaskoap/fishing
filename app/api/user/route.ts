@@ -1,6 +1,7 @@
 import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateBucket, BOAT_CONFIG } from '@/services/mining.service'
+import { isDeveloper } from '@/lib/constants'
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
@@ -11,10 +12,11 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const userData: any = await redis.hgetall(`user:${fid}`)
+        let userData: any = await redis.hgetall(`user:${fid}`)
         const invitees = await redis.smembers(`user:${fid}:invitees`)
 
         if (!userData) {
+            const dev = isDeveloper(fid)
             return NextResponse.json({
                 minedFish: 0,
                 rodLevel: 1,
@@ -23,9 +25,11 @@ export async function GET(req: NextRequest) {
                 lastDailySpin: 0,
                 referralCount: 0,
                 invitees: [],
-                activeBoatLevel: 0,
+                activeBoatLevel: dev ? 50 : 0,
                 boosterExpiry: 0,
-                canFishBalance: 0
+                canFishBalance: 0,
+                socialVerified: dev,
+                mode: dev ? "PAID" : "null"
             })
         }
 

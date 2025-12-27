@@ -45,3 +45,17 @@ export const FISH_VALUES = {
   COMMON: 1,
   JUNK: 0.1
 } as const;
+
+// Developer Setup for Testing
+export const DEVELOPER_FIDS = [
+  3, // Example: Dan Romero
+  2, // Example: Varun Srinivasan
+  // Add your FID here
+  873523, // Placeholder for user's FID
+];
+
+export const isDeveloper = (fid: number | string | undefined): boolean => {
+  if (!fid) return false;
+  const numFid = typeof fid === 'string' ? parseInt(fid) : fid;
+  return DEVELOPER_FIDS.includes(numFid);
+};
