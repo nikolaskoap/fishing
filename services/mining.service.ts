@@ -1,7 +1,7 @@
 import { FishRarity } from "@/components/Fishing/MiningController";
-import { BOAT_CONFIG } from "@/lib/constants";
+import { BOAT_CONFIG, BOAT_TIER_MAP } from "@/lib/constants";
 
-export { BOAT_CONFIG };
+export { BOAT_CONFIG, BOAT_TIER_MAP };
 
 export const generateBucket = (fishPerHour: number): FishRarity[] => {
     const bucket: FishRarity[] = [];

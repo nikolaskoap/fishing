@@ -19,7 +19,8 @@ import { StatsMenu } from '@/components/Home/StatsMenu';
 import { InventoryMenu } from '@/components/Home/InventoryMenu';
 import { InviteMenu } from '@/components/Home/InviteMenu';
 
-import { miningService, BOAT_CONFIG, BOAT_TIER_MAP } from '@/services/mining.service';
+import { BOAT_CONFIG, BOAT_TIER_MAP } from '@/lib/constants';
+import { miningService } from '@/services/mining.service';
 import { spinService } from '@/services/spin.service';
 import { swapService } from '@/services/swap.service';
 
