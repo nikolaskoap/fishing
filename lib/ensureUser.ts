@@ -1,59 +1,74 @@
 import { Redis } from '@upstash/redis'
-import { isDeveloper } from './constants'
-
-export interface User {
-    fid: string;
-    wallet: string;
-    mode: "FREE_USER" | "PAID_USER";
-    qualified: boolean | string;
-    createdAt: number | string;
-    last_cast_at: number | string;
-    hourly_catches: number | string;
-    daily_catches: number | string;
-    [key: string]: any;
-}
+import { isDeveloper } from '@/lib/constants'
 
 export async function ensureUser(
     redis: Redis,
     fid: string,
     wallet?: string
-): Promise<User> {
+) {
     const userKey = `user:${fid}`
+    const exists = await redis.exists(userKey)
 
-    // Use HGETALL to check existence and get data in one call
-    let userData: any = await redis.hgetall(userKey)
+    const dev = isDeveloper(fid)
+    const now = Date.now()
 
-    if (!userData || Object.keys(userData).length === 0) {
-        const dev = isDeveloper(fid)
-        const initialData: any = {
-            fid: fid.toString(),
-            wallet: wallet || "N/A",
-            mode: dev ? "PAID_USER" : "FREE_USER",
+    // ===============================
+    // USER DOES NOT EXIST → INITIALIZE
+    // ===============================
+    if (!exists) {
+        const initWallet =
+            wallet ??
+            (dev ? `0xDEV_${fid}` : "N/A")
+
+        const baseUser: Record<string, string | number> = {
+            fid,
+            wallet: initWallet,
             qualified: "false",
-            createdAt: Date.now().toString(),
-            last_cast_at: "0",
-            hourly_catches: "0",
-            daily_catches: "0",
-            minedFish: "0",
-            canFishBalance: "0",
-            rodLevel: "1",
-            activeBoatLevel: dev ? "50" : "0",
-            xp: "0",
-            spinTickets: "1",
-            lastDailySpin: "0",
-            socialVerified: dev ? "true" : "false"
+            createdAt: now,
+            last_cast_at: 0,
+            hourly_catches: 0,
+            daily_catches: 0,
+            minedFish: 0,
+            rodLevel: 1
         }
 
-        await redis.hset(userKey, initialData)
-        console.log(`AUTO_INITIALIZE_USER`, { fid, wallet: initialData.wallet, mode: initialData.mode })
-        return initialData as User
+        if (dev) {
+            baseUser.mode = "PAID_USER"
+            baseUser.boatTier = "LARGE"
+            baseUser.catchingRate = "60"
+
+            // 🔑 DEV SESSION AUTO-CREATE
+            await redis.set(`auth:session:${fid}`, "DEV_BYPASS")
+        } else {
+            baseUser.mode = "FREE_USER"
+        }
+
+        await redis.hset(userKey, baseUser)
+
+        console.log("AUTO_USER_INIT", {
+            fid,
+            dev,
+            wallet: initWallet
+        })
+
+        return baseUser
     }
 
-    // Standardize wallet field if it's missing but walletAddress exists
-    if (!userData.wallet && userData.walletAddress) {
-        userData.wallet = userData.walletAddress
-        await redis.hset(userKey, { wallet: userData.wallet })
+    // ===============================
+    // USER EXISTS → LOAD
+    // ===============================
+    const user = await redis.hgetall<Record<string, string>>(userKey)
+
+    // ===============================
+    // DEV SESSION HEALING (IMPORTANT)
+    // ===============================
+    if (dev) {
+        const hasSession = await redis.exists(`auth:session:${fid}`)
+        if (!hasSession) {
+            await redis.set(`auth:session:${fid}`, "DEV_BYPASS")
+            console.log("DEV_SESSION_HEALED", { fid })
+        }
     }
 
-    return userData as User
+    return user
 }
