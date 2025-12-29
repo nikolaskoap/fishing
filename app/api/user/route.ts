@@ -1,7 +1,8 @@
 import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateBucket, BOAT_CONFIG } from '@/services/mining.service'
-import { isDeveloper } from '@/lib/constants'
+import { isDeveloper, BoatTier } from '@/lib/constants'
+import { ensureUser } from '@/lib/ensureUser'
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
@@ -12,27 +13,8 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        let userData: any = await redis.hgetall(`user:${fid}`)
+        const userData = await ensureUser(redis, fid)
         const invitees = await redis.smembers(`user:${fid}:invitees`)
-
-        if (!userData) {
-            const dev = isDeveloper(fid)
-            return NextResponse.json({
-                minedFish: 0,
-                rodLevel: 1,
-                lastSeen: Date.now(),
-                spinTickets: 1,
-                lastDailySpin: 0,
-                referralCount: 0,
-                invitees: [],
-                activeBoatLevel: dev ? 50 : 0,
-                boosterExpiry: 0,
-                canFishBalance: 0,
-                socialVerified: dev,
-                mode: dev ? "PAID_USER" : "FREE_USER",
-                isQualified: false
-            })
-        }
 
         // Backend Driven: Check if hour has passed to refresh bucket
         // ONLY if user is PAID_USER
@@ -40,7 +22,14 @@ export async function GET(req: NextRequest) {
         const now = Date.now()
         const hourStart = parseInt(userData.hourStart || "0")
         const boatLevel = parseInt(userData.activeBoatLevel || "0")
-        const config = BOAT_CONFIG[boatLevel as keyof typeof BOAT_CONFIG]
+
+        const boatTierMap: Record<number, BoatTier> = {
+            10: "SMALL",
+            20: "MEDIUM",
+            50: "LARGE"
+        }
+        const boatTierKey = boatTierMap[boatLevel]
+        const config = boatTierKey ? BOAT_CONFIG[boatTierKey] : null
 
         if (mode === "PAID_USER" && boatLevel > 0) {
             if (config && (now - hourStart >= 3600000 || !userData.distributionBucket)) {
@@ -66,8 +55,12 @@ export async function GET(req: NextRequest) {
             isQualified: userData.isQualified === "true"
         })
     } catch (error: any) {
-        console.error('User GET Error:', error)
-        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
+        console.error('API_ERROR', {
+            route: '/api/user',
+            fid,
+            error: error.message
+        })
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }
 

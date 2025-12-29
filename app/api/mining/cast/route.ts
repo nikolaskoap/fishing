@@ -1,69 +1,87 @@
 import { redis } from '@/lib/redis'
-import { BOAT_CONFIG, FISH_VALUES, DIFFICULTY_CONFIG, GLOBAL_CONFIG } from '@/lib/constants'
+import { BOAT_CONFIG, FISH_VALUES, DIFFICULTY_CONFIG, GLOBAL_CONFIG, BoatTier } from '@/lib/constants'
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import { ensureUser } from '@/lib/ensureUser'
 
 export async function POST(req: NextRequest) {
+    let fid: string | undefined;
     try {
-        const { userId } = await req.json()
-        if (!userId) return NextResponse.json({ error: 'Missing UserID' }, { status: 400 })
+        const body = await req.json()
+        fid = body.userId?.toString()
+        const wallet = body.wallet
+
+        if (!fid) return NextResponse.json({ error: 'Missing UserID' }, { status: 400 })
 
         // 1. Session & Mode Check (Strict)
-        const sessionActive = await redis.exists(`auth:session:${userId}`)
+        const sessionActive = await redis.exists(`auth:session:${fid}`)
         if (!sessionActive) return NextResponse.json({ error: 'UNAUTHORIZED_SESSION' }, { status: 401 })
 
-        const userData: any = await redis.hgetall(`user:${userId}`)
-        if (!userData || Object.keys(userData).length === 0) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        // 2. Ensure User Data exists using ensureUser
+        const userData = await ensureUser(redis, fid, wallet)
+
+        // Wallet Binding Rule: If wallet provided, verify mismatch
+        if (wallet && userData.wallet !== "N/A" && userData.wallet !== wallet) {
+            return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
+        }
 
         if (userData.mode !== "PAID_USER") {
             return NextResponse.json({ error: 'MINING_LOCK_FREE_MODE' }, { status: 403 })
         }
 
-        // 2. Rate Limiting Check
+        // 3. Rate Limiting Check
         const lastCast = parseInt(userData.lastCastAt || "0")
         const now = Date.now()
         if (now - lastCast < GLOBAL_CONFIG.MIN_CAST_INTERVAL) {
             return NextResponse.json({ error: 'CAST_TOO_FAST' }, { status: 429 })
         }
 
-        // 3. Global Difficulty Calculation (Atomic)
+        // 4. Global Difficulty Calculation (Atomic)
         const qualifiedCount = parseInt(await redis.get('stats:qualified_players') || "0")
         const difficultyMult = Math.max(
             DIFFICULTY_CONFIG.MIN_DIFFICULTY,
             DIFFICULTY_CONFIG.BASE_DIFFICULTY - (qualifiedCount * DIFFICULTY_CONFIG.PLAYER_REDUCTION)
         )
 
-        const boatLevel = parseInt(userData.activeBoatLevel || "0") as keyof typeof BOAT_CONFIG
-        const config = BOAT_CONFIG[boatLevel]
-        if (!config) {
-            return NextResponse.json({ error: 'INVALID_BOAT_CONFIG', boatLevel }, { status: 500 })
+        const boatTierMap: Record<number, BoatTier> = {
+            10: "SMALL",
+            20: "MEDIUM",
+            50: "LARGE"
         }
 
-        // 4. Caps Check (Hourly & Daily)
+        const numericBoatLevel = parseInt(userData.activeBoatLevel || "0")
+        const boatTierKey = boatTierMap[numericBoatLevel]
+        const config = boatTierKey ? BOAT_CONFIG[boatTierKey] : null
+
+        if (!config) {
+            return NextResponse.json({ error: 'INVALID_BOAT_CONFIG', boatLevel: numericBoatLevel }, { status: 500 })
+        }
+
+        // 5. Caps Check (Hourly & Daily)
         const hourlyCatches = parseInt(userData.hourlyCatches || "0")
         if (hourlyCatches >= config.fishPerHour) {
             return NextResponse.json({ error: 'HOURLY_CAP_REACHED' }, { status: 429 })
         }
 
-        const todayKey = `daily_cap:${userId}:${new Date().toISOString().split('T')[0]}`
+        const todayKey = `daily_cap:${fid}:${new Date().toISOString().split('T')[0]}`
         const dailyCatches = parseInt(await redis.get(todayKey) || "0")
         if (dailyCatches >= GLOBAL_CONFIG.DAILY_CATCH_CAP) {
             return NextResponse.json({ error: 'DAILY_CAP_REACHED' }, { status: 429 })
         }
 
-        // 5. Probability Success Logic (Server-Side RNG)
+        // 6. Probability Success Logic (Server-Side RNG)
         const roll = crypto.randomInt(0, 1000) / 1000
         const successRate = config.catchingRate * difficultyMult
         const isSuccess = roll < successRate
 
         // Update Last Cast immediately
-        await redis.hset(`user:${userId}`, { lastCastAt: now.toString() })
+        await redis.hset(`user:${fid}`, { lastCastAt: now.toString() })
 
         if (!isSuccess) {
             return NextResponse.json({ status: 'MISS', difficultyMult })
         }
 
-        // 6. Bucket Action (Only on SUCCESS)
+        // 7. Bucket Action (Only on SUCCESS)
         const bucket = JSON.parse(userData.distributionBucket || "[]")
         const cursor = parseInt(userData.currentIndex || "0")
 
@@ -74,7 +92,7 @@ export async function POST(req: NextRequest) {
         const fishType = bucket[cursor]
         const fishValue = FISH_VALUES[fishType as keyof typeof FISH_VALUES] || 1
 
-        // 7. Commit result (Atomic)
+        // 8. Commit result (Atomic)
         const newMinedFish = parseFloat(userData.minedFish || "0") + fishValue
         const newXp = parseInt(userData.xp || "0") + 10
 
@@ -92,7 +110,7 @@ export async function POST(req: NextRequest) {
             await redis.incr('stats:qualified_players')
         }
 
-        await redis.hset(`user:${userId}`, updateData)
+        await redis.hset(`user:${fid}`, updateData)
         await redis.incr(todayKey)
         await redis.expire(todayKey, 86400 * 2) // Keep for 2 days
 
@@ -101,7 +119,7 @@ export async function POST(req: NextRequest) {
 
         // Audit Log
         const castId = crypto.randomUUID()
-        await redis.lpush(`audit:mining:${userId}`, JSON.stringify({
+        await redis.lpush(`audit:mining:${fid}`, JSON.stringify({
             id: castId,
             type: fishType,
             value: fishValue,
@@ -121,7 +139,11 @@ export async function POST(req: NextRequest) {
             }
         })
     } catch (error: any) {
-        console.error('Mining Cast Error:', error)
-        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
+        console.error('API_ERROR', {
+            route: '/api/mining/cast',
+            fid,
+            error: error.message
+        })
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }

@@ -5,10 +5,11 @@ export type BoatTier = "SMALL" | "MEDIUM" | "LARGE";
 export const BOAT_CONFIG: Record<BoatTier, {
   price: number
   catchingRate: number
+  fishPerHour: number
 }> = {
-  SMALL: { price: 10, catchingRate: 0.15 },
-  MEDIUM: { price: 20, catchingRate: 0.16 },
-  LARGE: { price: 50, catchingRate: 0.20 },
+  SMALL: { price: 10, catchingRate: 0.15, fishPerHour: 10 },
+  MEDIUM: { price: 20, catchingRate: 0.16, fishPerHour: 25 },
+  LARGE: { price: 50, catchingRate: 0.20, fishPerHour: 60 },
 };
 
 export const DIFFICULTY_CONFIG = {

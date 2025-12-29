@@ -1,6 +1,7 @@
 import { redis } from '@/lib/redis'
 import { BOAT_CONFIG, BoatTier, isDeveloper } from '@/lib/constants'
 import { NextRequest, NextResponse } from 'next/server'
+import { ensureUser } from '@/lib/ensureUser'
 
 // Mapping numeric tiers from frontend to BoatTier strings
 const TIER_MAP: Record<number, BoatTier> = {
@@ -15,8 +16,9 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json()
-        fid = body.userId // Frontend sends FID as userId
+        fid = body.userId?.toString() // Frontend sends FID as userId
         tier = body.tier
+        const wallet = body.wallet // Check if frontend sends wallet
 
         if (!fid || tier === undefined) {
             return NextResponse.json({ error: 'Missing FID or Tier' }, { status: 400 })
@@ -31,7 +33,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'UNAUTHORIZED_SESSION' }, { status: 401 })
         }
 
-        // 2. Validate Boat Tier
+        // 2. Ensure User Data exists using ensureUser
+        const userData = await ensureUser(redis, fid, wallet)
+
+        // Wallet Binding Rule: If wallet provided, verify mismatch
+        if (wallet && userData.wallet !== "N/A" && userData.wallet !== wallet) {
+            return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
+        }
+
+        // 3. Validate Boat Tier
         const boatTierKey = TIER_MAP[parseInt(tier)]
         if (!boatTierKey) {
             return NextResponse.json({ error: 'INVALID_BOAT_TIER' }, { status: 400 })
@@ -39,26 +49,14 @@ export async function POST(req: NextRequest) {
 
         const config = BOAT_CONFIG[boatTierKey]
 
-        // 3. User Data Preparation
-        const userKey = `user:${fid}`
-        const existingData: any = await redis.hgetall(userKey) || {}
-
-        // Ensure wallet exists in schema (use walletAddress as fallback from old sessions)
-        const wallet = existingData.wallet || existingData.walletAddress || "N/A"
-
-        // 4. Redis Schema Implementation (Fully Initialized)
-        const userData = {
-            fid: fid.toString(),
-            wallet: wallet,
+        // 4. Update User Data (Only mode and boat info)
+        const updateData = {
             mode: "PAID_USER",
             boatTier: boatTierKey,
-            catchingRate: config.catchingRate.toString(),
-            qualified: "false",
-            createdAt: existingData.createdAt || Date.now().toString()
+            catchingRate: config.catchingRate.toString()
         }
 
-        // Perform atomic update
-        await redis.hset(userKey, userData)
+        await redis.hset(`user:${fid}`, updateData)
 
         // 5. Success Response
         return NextResponse.json({
@@ -70,15 +68,14 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         // 6. Structured Error Logging
-        console.error("BOAT_SELECT_ERROR", {
+        console.error("API_ERROR", {
+            route: '/api/boat/select',
             fid,
-            tier,
             error: error?.message
         })
 
         return NextResponse.json({
-            error: 'Internal Server Error',
-            details: error.message
+            error: 'Internal Server Error'
         }, { status: 500 })
     }
 }

@@ -63,7 +63,8 @@ export default function BoatSelectionGate({ fid, userId, onSelect, onFreeMode }:
                     if (data.activeTier || res.ok) {
                         onSelect(boat.tier)
                     } else {
-                        alert("Bypass error: " + (data.error || "Unknown"))
+                        const errorMsg = data.details ? `${data.error}: ${data.details}` : data.error;
+                        alert("Bypass error: " + (errorMsg || "Unknown"))
                     }
                 } catch (e) {
                     console.error("Dev Bypass Fetch Error", e)

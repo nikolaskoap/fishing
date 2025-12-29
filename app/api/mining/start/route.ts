@@ -1,23 +1,35 @@
 import { redis } from '@/lib/redis'
-import { BOAT_CONFIG } from '@/lib/constants'
+import { BOAT_CONFIG, BoatTier } from '@/lib/constants'
 import { generateBucket } from '@/services/mining.service'
 import { NextRequest, NextResponse } from 'next/server'
+import { ensureUser } from '@/lib/ensureUser'
 
 export async function POST(req: NextRequest) {
+    let fid: string | undefined;
     try {
-        const { userId } = await req.json()
-        if (!userId) return NextResponse.json({ error: 'Missing UserID/FID' }, { status: 400 })
+        const body = await req.json()
+        fid = body.userId?.toString()
 
-        const userData: any = await redis.hgetall(`user:${userId}`)
-        if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        if (!fid) return NextResponse.json({ error: 'Missing UserID/FID' }, { status: 400 })
+
+        // 1. Ensure User Data exists using ensureUser
+        const userData = await ensureUser(redis, fid)
 
         const boatLevel = parseInt(userData.activeBoatLevel || "0")
         if (boatLevel === 0) return NextResponse.json({ error: 'Select a boat first' }, { status: 400 })
 
-        const config = BOAT_CONFIG[boatLevel as keyof typeof BOAT_CONFIG]
+        const boatTierMap: Record<number, BoatTier> = {
+            10: "SMALL",
+            20: "MEDIUM",
+            50: "LARGE"
+        }
+        const boatTierKey = boatTierMap[boatLevel]
+        const config = boatTierKey ? BOAT_CONFIG[boatTierKey] : null
+
+        if (!config) return NextResponse.json({ error: 'INVALID_BOAT_CONFIG' }, { status: 500 })
 
         // Initialize Session
-        const sessionKey = `session:${userId}`
+        const sessionKey = `session:${fid}`
         const now = Date.now()
 
         // Generate Hourly Bucket if needed
@@ -27,7 +39,7 @@ export async function POST(req: NextRequest) {
         if (now - hourStart >= 3600000 || !bucket) {
             const newBucket = generateBucket(config.fishPerHour)
             bucket = JSON.stringify(newBucket)
-            await redis.hset(`user:${userId}`, {
+            await redis.hset(`user:${fid}`, {
                 distributionBucket: bucket,
                 currentIndex: "0",
                 hourStart: now.toString(),
@@ -41,7 +53,12 @@ export async function POST(req: NextRequest) {
             sessionActive: true,
             fishCapPerHour: config.fishPerHour
         })
-    } catch (error) {
+    } catch (error: any) {
+        console.error('API_ERROR', {
+            route: '/api/mining/start',
+            fid,
+            error: error.message
+        })
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }

@@ -2,10 +2,14 @@ import { redis } from '@/lib/redis'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyMessage } from 'viem'
 import { isDeveloper } from '@/lib/constants'
+import { ensureUser } from '@/lib/ensureUser'
 
 export async function POST(req: NextRequest) {
+    let fid: string | undefined;
     try {
-        const { fid, address, signature } = await req.json()
+        const { fid: rawFid, address, signature } = await req.json()
+        fid = rawFid?.toString()
+
         if (!fid || !address || !signature) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         }
@@ -30,36 +34,16 @@ export async function POST(req: NextRequest) {
         // Signature is valid, delete nonce
         await redis.del(`nonce:${fid}`)
 
-        // Initialize/Update User Data
+        // Initialize/Update User Data using ensureUser
+        const userData = await ensureUser(redis, fid, address)
         const userKey = `user:${fid}`
-        let userData: any = await redis.hgetall(userKey)
-        const dev = isDeveloper(fid)
 
-        if (!userData || Object.keys(userData).length === 0) {
-            const initialData = {
-                id: fid.toString(),
-                fid: fid.toString(),
-                walletAddress: address,
-                socialVerified: dev ? "true" : "false",
-                mode: dev ? "PAID_USER" : "FREE_USER",
-                createdAt: Date.now().toString(),
-                minedFish: "0",
-                canFishBalance: "0",
-                rodLevel: "1",
-                activeBoatLevel: dev ? "50" : "0",
-                xp: "0",
-                spinTickets: "1",
-                lastDailySpin: "0",
-                isQualified: "false" // Initially false, becomes true after first success
-            }
-            await redis.hset(userKey, initialData)
-            userData = initialData
-        } else {
-            // Hard bind wallet to FID: if wallet changed, we update it but keep session logs
-            if (userData.walletAddress !== address) {
-                console.log(`User ${fid} changed wallet from ${userData.walletAddress} to ${address}`)
-                await redis.hset(userKey, { walletAddress: address })
-            }
+        // Wallet Binding Rule: In auth/verify, we allow updating the wallet 
+        // as it's the primary authentication point.
+        if (userData.wallet !== address && address !== "N/A") {
+            console.log(`WALLET_UPDATE`, { fid, old: userData.wallet, new: address })
+            await redis.hset(userKey, { wallet: address })
+            userData.wallet = address
         }
 
         // Set session marker to prevent session-less API calls
@@ -72,7 +56,11 @@ export async function POST(req: NextRequest) {
             socialVerified: userData.socialVerified === "true"
         })
     } catch (error: any) {
-        console.error('Verify Error:', error)
-        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
+        console.error('API_ERROR', {
+            route: '/api/auth/verify',
+            fid,
+            error: error.message
+        })
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }
