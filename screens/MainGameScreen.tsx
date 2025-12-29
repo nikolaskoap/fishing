@@ -19,10 +19,9 @@ import { StatsMenu } from '@/components/Home/StatsMenu';
 import { InventoryMenu } from '@/components/Home/InventoryMenu';
 import { InviteMenu } from '@/components/Home/InviteMenu';
 
-import { miningService } from '@/services/mining.service';
+import { miningService, BOAT_CONFIG, BOAT_TIER_MAP } from '@/services/mining.service';
 import { spinService } from '@/services/spin.service';
 import { swapService } from '@/services/swap.service';
-import { BOAT_CONFIG } from '@/services/mining.service';
 
 export default function MainGameScreen() {
   const { context } = useFrame()
@@ -154,7 +153,9 @@ export default function MainGameScreen() {
             } catch (e) { console.error("Bucket parse error", e) }
           }
           setActiveBoatLevel(savedBoat)
-          setFishCap(BOAT_CONFIG[savedBoat as keyof typeof BOAT_CONFIG]?.fishPerHour || 0)
+          const boatTierKey = BOAT_TIER_MAP[savedBoat]
+          const config = boatTierKey ? BOAT_CONFIG[boatTierKey] : null
+          setFishCap(config?.fishPerHour || 0)
           setBoosterExpiry(savedBooster)
           setXp(savedXp)
           setSpinTickets(savedTickets)
