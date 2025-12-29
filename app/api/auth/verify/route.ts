@@ -38,12 +38,17 @@ export async function POST(req: NextRequest) {
         const userData = await ensureUser(redis, fid, address)
         const userKey = `user:${fid}`
 
-        // Wallet Binding Rule: In auth/verify, we allow updating the wallet 
-        // as it's the primary authentication point.
-        if (userData.wallet !== address && address !== "N/A") {
-            console.log(`WALLET_UPDATE`, { fid, old: userData.wallet, new: address })
+        // Wallet Binding Rule: STRICT LOCK
+        // If wallet is "N/A" (legacy/placeholder), bind it now.
+        // If wallet is set and mismatch -> ERROR.
+
+        if (userData.wallet === "N/A" || !userData.wallet) {
+            console.log(`WALLET_BIND_INIT`, { fid, new: address })
             await redis.hset(userKey, { wallet: address })
             userData.wallet = address
+        } else if (userData.wallet !== address) {
+            console.error(`WALLET_MISMATCH`, { fid, registered: userData.wallet, incoming: address })
+            return NextResponse.json({ error: 'WALLET_MISMATCH' }, { status: 401 })
         }
 
         // Set session marker to prevent session-less API calls

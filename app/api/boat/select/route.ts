@@ -24,39 +24,65 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing FID or Tier' }, { status: 400 })
         }
 
-        // 1. Session & Auth Check
+        // 0. DEBUG LOG (User Request)
+        console.log("DEBUG_BOAT_SELECT", {
+            fid,
+            wallet,
+            boatId: tier,
+            timestamp: Date.now()
+        })
+
+        // 1. Ensure User Data exists using ensureUser (MUST BE FIRST)
+        const userData = await ensureUser(redis, fid, wallet)
+
+        // 2. Session & Auth Check
+        // We do this AFTER ensureUser so we have valid user object to log/debug if needed
         const sessionActive = await redis.exists(`auth:session:${fid}`)
         const dev = isDeveloper(fid)
 
-        // Developer bypass skips only the session check
         if (!sessionActive && !dev) {
             return NextResponse.json({ error: 'UNAUTHORIZED_SESSION' }, { status: 401 })
         }
 
-        // 2. Ensure User Data exists using ensureUser
-        const userData = await ensureUser(redis, fid, wallet)
-
-        // Wallet Binding Rule: If wallet provided, verify mismatch
+        // 3. Wallet Binding Rule: If wallet provided, verify mismatch
         if (wallet && userData.wallet !== "N/A" && userData.wallet !== wallet) {
             return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
         }
 
-        // 3. Validate Boat Tier
+        // 4. Validate Boat Tier
         const boatTierKey = TIER_MAP[parseInt(tier)]
-        if (!boatTierKey) {
+        if (parseInt(tier) !== 0 && !boatTierKey) {
+            // Allow tier 0 (Free Mode) or valid tier
+            // If not 0 and not in map, error
             return NextResponse.json({ error: 'INVALID_BOAT_TIER' }, { status: 400 })
         }
 
-        const config = BOAT_CONFIG[boatTierKey]
+        // Handle Free Mode (Tier 0) explicitly if needed, or just let it pass if no config needed
+        // The original code assumed boatTierKey exists for the update. 
+        // If tier is 0, we might strictly set mode to FREE_USER.
 
-        // 4. Update User Data (Only mode and boat info)
-        const updateData = {
-            mode: "PAID_USER",
-            boatTier: boatTierKey,
-            catchingRate: config.catchingRate.toString()
+        let updateData: any = {};
+        let config: any = null;
+
+        if (parseInt(tier) === 0) {
+            updateData = {
+                mode: "FREE_USER",
+                boatTier: "SMALL", // Default fallback or keep existing? 
+                // Context: User might switch back to free mode? 
+                // For now, let's assume switching to free mode just updates mode
+            }
+        } else {
+            config = BOAT_CONFIG[boatTierKey]
+            updateData = {
+                mode: "PAID_USER",
+                boatTier: boatTierKey,
+                catchingRate: config.catchingRate.toString()
+            }
         }
 
-        await redis.hset(`user:${fid}`, updateData)
+        if (config || parseInt(tier) === 0) {
+            await redis.hset(`user:${fid}`, updateData)
+        }
 
         // 5. Success Response
         return NextResponse.json({
