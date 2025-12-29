@@ -12,6 +12,12 @@ export const BOAT_CONFIG: Record<BoatTier, {
   LARGE: { price: 50, catchingRate: 0.20, fishPerHour: 60 },
 };
 
+export const BOAT_TIER_MAP: Record<number, BoatTier> = {
+  10: "SMALL",
+  20: "MEDIUM",
+  50: "LARGE"
+};
+
 export const DIFFICULTY_CONFIG = {
   BASE_DIFFICULTY: 1.0,
   PLAYER_REDUCTION: 0.001, // 0.1% per player
