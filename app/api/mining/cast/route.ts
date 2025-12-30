@@ -42,14 +42,14 @@ export async function POST(req: NextRequest) {
         }
 
         // 3. Rate Limiting Check
-        const lastCast = parseInt(userData.lastCastAt || "0")
+        const lastCast = Number(userData.lastCastAt ?? 0)
         const now = Date.now()
         if (now - lastCast < GLOBAL_CONFIG.MIN_CAST_INTERVAL) {
             return NextResponse.json({ error: 'CAST_TOO_FAST' }, { status: 429 })
         }
 
         // 4. Global Difficulty Calculation (Atomic)
-        const qualifiedCount = parseInt(await redis.get('stats:qualified_players') || "0")
+        const qualifiedCount = Number(await redis.get('stats:qualified_players') ?? 0)
         const difficultyMult = Math.max(
             DIFFICULTY_CONFIG.MIN_DIFFICULTY,
             DIFFICULTY_CONFIG.BASE_DIFFICULTY - (qualifiedCount * DIFFICULTY_CONFIG.PLAYER_REDUCTION)
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
             50: "LARGE"
         }
 
-        const numericBoatLevel = parseInt(userData.activeBoatLevel || "0")
+        const numericBoatLevel = Number(userData.activeBoatLevel ?? 0)
         const boatTierKey = boatTierMap[numericBoatLevel]
         const config = boatTierKey ? BOAT_CONFIG[boatTierKey] : null
 
@@ -70,13 +70,13 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. Caps Check (Hourly & Daily)
-        const hourlyCatches = parseInt(userData.hourlyCatches || "0")
+        const hourlyCatches = Number(userData.hourlyCatches ?? 0)
         if (hourlyCatches >= config.fishPerHour) {
             return NextResponse.json({ error: 'HOURLY_CAP_REACHED' }, { status: 429 })
         }
 
         const todayKey = `daily_cap:${fid}:${new Date().toISOString().split('T')[0]}`
-        const dailyCatches = parseInt(await redis.get(todayKey) || "0")
+        const dailyCatches = Number(await redis.get(todayKey) ?? 0)
         if (dailyCatches >= GLOBAL_CONFIG.DAILY_CATCH_CAP) {
             return NextResponse.json({ error: 'DAILY_CAP_REACHED' }, { status: 429 })
         }
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
         // 7. Bucket Action (Only on SUCCESS)
         const bucket = JSON.parse(userData.distributionBucket || "[]")
-        const cursor = parseInt(userData.currentIndex || "0")
+        const cursor = Number(userData.currentIndex ?? 0)
 
         if (cursor >= bucket.length || bucket.length === 0) {
             return NextResponse.json({ error: 'BUCKET_EXHAUSTED' }, { status: 410 })
@@ -105,15 +105,15 @@ export async function POST(req: NextRequest) {
         const fishValue = FISH_VALUES[fishType as keyof typeof FISH_VALUES] || 1
 
         // 8. Commit result (Atomic)
-        const newMinedFish = parseFloat(userData.minedFish || "0") + fishValue
-        const newXp = parseInt(userData.xp || "0") + 10
+        const newMinedFish = Number(userData.minedFish ?? 0) + fishValue
+        const newXp = Number(userData.xp ?? 0) + 10
 
         const updateData: any = {
             minedFish: newMinedFish.toString(),
             xp: newXp.toString(),
             currentIndex: (cursor + 1).toString(),
             hourlyCatches: (hourlyCatches + 1).toString(),
-            totalSuccessfulCasts: (parseInt(userData.totalSuccessfulCasts || "0") + 1).toString()
+            totalSuccessfulCasts: (Number(userData.totalSuccessfulCasts ?? 0) + 1).toString()
         }
 
         // Qualified Player Logic
