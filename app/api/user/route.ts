@@ -14,14 +14,17 @@ export async function GET(req: NextRequest) {
 
     try {
         const userData = await ensureUser(redis, fid)
+        if (!userData) {
+            return NextResponse.json({ error: 'USER_DATA_NOT_FOUND' }, { status: 404 })
+        }
         const invitees = await redis.smembers(`user:${fid}:invitees`)
 
         // Backend Driven: Check if hour has passed to refresh bucket
         // ONLY if user is PAID_USER
         const mode = userData.mode || "FREE_USER"
         const now = Date.now()
-        const hourStart = parseInt(userData.hourStart || "0")
-        const boatLevel = parseInt(userData.activeBoatLevel || "0")
+        const hourStart = Number(userData.hourStart ?? 0)
+        const boatLevel = Number(userData.activeBoatLevel ?? 0)
 
         const boatTierMap: Record<number, BoatTier> = {
             10: "SMALL",

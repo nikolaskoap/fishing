@@ -15,7 +15,11 @@ export async function POST(req: NextRequest) {
         // 1. Ensure User Data exists using ensureUser
         const userData = await ensureUser(redis, fid)
 
-        const boatLevel = parseInt(userData.activeBoatLevel || "0")
+        if (!userData) {
+            return NextResponse.json({ error: 'USER_DATA_NOT_FOUND' }, { status: 500 })
+        }
+
+        const boatLevel = Number(userData.activeBoatLevel ?? 0)
         if (boatLevel === 0) return NextResponse.json({ error: 'Select a boat first' }, { status: 400 })
 
         const boatTierMap: Record<number, BoatTier> = {
@@ -34,7 +38,7 @@ export async function POST(req: NextRequest) {
 
         // Generate Hourly Bucket if needed
         let bucket = userData.distributionBucket
-        const hourStart = parseInt(userData.hourStart || "0")
+        const hourStart = Number(userData.hourStart ?? 0)
 
         if (now - hourStart >= 3600000 || !bucket) {
             const newBucket = generateBucket(config.fishPerHour)

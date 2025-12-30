@@ -36,14 +36,14 @@ export async function POST(req: NextRequest) {
         const userKey = `user:${fid}`
 
         // 3. Cooldown Check (24h)
-        const lastSwap = parseInt(userData.lastSwapAt || "0")
+        const lastSwap = Number(userData.lastSwapAt ?? 0)
         const now = Date.now()
         if (now - lastSwap < 86400000) {
             return NextResponse.json({ error: 'SWAP_COOLDOWN_ACTIVE' }, { status: 429 })
         }
 
         // 4. Balance Re-check
-        const currentBalance = parseFloat(userData.canFishBalance || "0")
+        const currentBalance = Number(userData.canFishBalance ?? 0)
         if (currentBalance < swapAmount) {
             return NextResponse.json({ error: 'INSUFFICIENT_BALANCE' }, { status: 400 })
         }
