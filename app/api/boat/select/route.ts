@@ -50,10 +50,21 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'UNAUTHORIZED_SESSION' }, { status: 401 })
             }
 
-            // 4. Wallet Binding Rule: Handled by ensureUser
+            // 4. Wallet Binding Rule
+            // Only error if user already has a valid wallet set and it mismatches
+            // "N/A" or empty string counts as unset/valid to update (though update happens in auth/verify usually)
+            if (
+                !dev &&
+                wallet &&
+                userData.wallet &&
+                userData.wallet !== "N/A" &&
+                userData.wallet !== "" &&
+                userData.wallet !== wallet
+            ) {
+                return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
+            }
 
-
-            const tierNum = Number(tier)
+            const tierNum = parseInt(tier)
             if (isNaN(tierNum)) {
                 return NextResponse.json({ error: 'INVALID_TIER_VALUE' }, { status: 400 })
             }
@@ -104,7 +115,7 @@ export async function POST(req: NextRequest) {
             await redis.hset(`user:${fid}`, {
                 mode: "PAID_USER",
                 boatTier: boatTierKey,
-                catchingRate: config.catchingRate // Store as number
+                catchingRate: String(config.catchingRate) // Store as number
             })
 
             console.log("BOAT_SELECT_SUCCESS", {
