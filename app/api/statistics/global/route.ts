@@ -2,6 +2,8 @@ import { redis } from '@/lib/redis'
 import { NextResponse } from 'next/server'
 import { DIFFICULTY_CONFIG } from '@/lib/constants'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
     try {
         const stats: any = await redis.hgetall('stats:global') || {}

@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
             }
 
-            const tierNum = parseInt(tier)
-            if (isNaN(tierNum)) {
+            const tierNum = Number(tier ?? 0)
+            if (!Number.isFinite(tierNum)) {
                 return NextResponse.json({ error: 'INVALID_TIER_VALUE' }, { status: 400 })
             }
 
