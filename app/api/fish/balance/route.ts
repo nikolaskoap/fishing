@@ -11,11 +11,11 @@ export async function GET(req: NextRequest) {
         const userData: any = await redis.hgetall(`user:${fid}`)
         if (!userData) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-        const totalFish = parseFloat(userData.minedFish || "0")
+        const totalFish = Number(userData.minedFish ?? 0)
         const level = Math.floor(totalFish / 1000) + 1
 
         return NextResponse.json({
-            canFish: parseFloat(userData.canFishBalance || "0"),
+            canFish: Number(userData.canFishBalance ?? 0),
             totalFish: totalFish,
             level: level
         })

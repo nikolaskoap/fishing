@@ -1,73 +1,102 @@
 import { Redis } from '@upstash/redis'
 import { isDeveloper } from '@/lib/constants'
 
+export type UserData = Record<string, string>
+
 export async function ensureUser(
     redis: Redis,
     fid: string,
     wallet?: string
-) {
+): Promise<UserData> {
     const userKey = `user:${fid}`
-    const exists = await redis.exists(userKey)
+    const sessionKey = `auth:session:${fid}`
 
-    const dev = isDeveloper(fid)
-    const now = Date.now()
+    // 1. Ambil user data (kalau ada)
+    let user = await redis.hgetall<UserData>(userKey)
 
-    // ===============================
-    // USER DOES NOT EXIST → INITIALIZE
-    // ===============================
-    if (!exists) {
-        const initWallet =
-            wallet ??
-            (dev ? `0xDEV_${fid}` : "N/A")
+    const isNewUser = !user || Object.keys(user).length === 0
 
-        const baseUser: Record<string, string | number> = {
-            fid,
-            wallet: initWallet,
-            qualified: "false",
-            createdAt: now,
-            last_cast_at: 0,
-            hourly_catches: 0,
-            daily_catches: 0,
-            minedFish: 0,
-            rodLevel: 1
-        }
+    // 2. Default schema (WAJIB LENGKAP)
+    const DEFAULT_USER: UserData = {
+        fid,
+        wallet: wallet ?? 'N/A',
+        mode: 'FREE_USER',
+        boatTier: 'SMALL',
+        catchingRate: '0',
+        qualified: 'false',
 
-        if (dev) {
-            baseUser.mode = "PAID_USER"
-            baseUser.boatTier = "LARGE"
-            baseUser.catchingRate = "60"
+        // mining safety
+        lastCastAt: '0',
+        hourlyCatches: '0',
+        dailyCatches: '0',
+        currentIndex: '0',
+        currentHour: Date.now().toString(),
 
-            // 🔑 DEV SESSION AUTO-CREATE
-            await redis.set(`auth:session:${fid}`, "DEV_BYPASS")
-        } else {
-            baseUser.mode = "FREE_USER"
-        }
+        // economy
+        minedFish: '0',
+        xp: '0',
 
-        await redis.hset(userKey, baseUser)
-
-        console.log("AUTO_USER_INIT", {
-            fid,
-            dev,
-            wallet: initWallet
-        })
-
-        return baseUser
+        createdAt: Date.now().toString()
     }
 
-    // ===============================
-    // USER EXISTS → LOAD
-    // ===============================
-    const user = await redis.hgetall<Record<string, string>>(userKey)
+    // 3. CREATE USER jika belum ada
+    if (isNewUser) {
+        await redis.hset(userKey, DEFAULT_USER)
+        user = DEFAULT_USER
+    }
 
-    // ===============================
-    // DEV SESSION HEALING (IMPORTANT)
-    // ===============================
-    if (dev) {
-        const hasSession = await redis.exists(`auth:session:${fid}`)
-        if (!hasSession) {
-            await redis.set(`auth:session:${fid}`, "DEV_BYPASS")
-            console.log("DEV_SESSION_HEALED", { fid })
+    // 4. HEAL USER (field yang hilang → ditambahkan)
+    const healPayload: Record<string, string> = {}
+
+    for (const key in DEFAULT_USER) {
+        if (user![key] === undefined) {
+            healPayload[key] = DEFAULT_USER[key]
         }
+    }
+
+    if (Object.keys(healPayload).length > 0) {
+        await redis.hset(userKey, healPayload)
+        user = { ...user!, ...healPayload }
+    }
+
+    // 5. WALLET BINDING (SET SEKALI SAJA)
+    if (
+        wallet &&
+        user!.wallet !== 'N/A' &&
+        user!.wallet !== wallet
+    ) {
+        throw new Error('WALLET_MISMATCH')
+    }
+
+    if (wallet && user!.wallet === 'N/A') {
+        await redis.hset(userKey, { wallet })
+        user!.wallet = wallet
+    }
+
+    // 6. DEVELOPER BYPASS (ABSOLUT)
+    if (isDeveloper(fid)) {
+        // session auto-heal
+        await redis.set(sessionKey, '1')
+
+        const devWallet = user!.wallet === 'N/A'
+            ? `0xDEV_${fid}`
+            : user!.wallet
+
+        const DEV_PATCH: UserData = {
+            wallet: devWallet,
+            mode: 'PAID_USER',
+            boatTier: 'LARGE',
+            catchingRate: '0.2',
+            qualified: 'true'
+        }
+
+        await redis.hset(userKey, DEV_PATCH)
+        user = { ...user!, ...DEV_PATCH }
+    }
+
+    // 7. FINAL SAFETY CHECK
+    if (!user) {
+        throw new Error('ENSURE_USER_FAILED')
     }
 
     return user

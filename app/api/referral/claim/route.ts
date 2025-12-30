@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
             const inviteeData: any = await redis.hgetall(`user:${inviteeFid}`)
             if (!inviteeData) continue
 
-            const castCount = parseInt(inviteeData.totalSuccessfulCasts || "0")
+            const castCount = Number(inviteeData.totalSuccessfulCasts ?? 0)
             const isPaid = inviteeData.mode === "PAID_USER"
 
             if (isPaid && castCount >= GLOBAL_CONFIG.REFERRAL_MIN_CASTS) {

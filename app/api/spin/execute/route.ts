@@ -25,9 +25,8 @@ export async function POST(req: NextRequest) {
         }
 
         // Wallet Binding Rule: If wallet provided, verify mismatch
-        if (!isDeveloper(fid) && wallet && userData.wallet !== "N/A" && userData.wallet !== wallet) {
-            return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
-        }
+        // Wallet Binding Rule: Handled by ensureUser
+
 
         const userKey = `user:${fid}`
 
@@ -90,6 +89,9 @@ export async function POST(req: NextRequest) {
             balance: prize > 0 ? (await redis.hget(userKey, 'spin_rewards_usdc')) : null
         })
     } catch (error: any) {
+        if (error.message === 'WALLET_MISMATCH') {
+            return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
+        }
         console.error('API_ERROR', {
             route: '/api/spin/execute',
             fid,

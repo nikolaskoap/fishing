@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
-        const currentMined = parseFloat(userData.minedFish || "0")
+        const currentMined = Number(userData.minedFish ?? 0)
         if (currentMined < amount) {
             return NextResponse.json({ error: 'Insufficient Fish balance' }, { status: 400 })
         }
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
         const canFishToAdd = amount * conversionRate
 
         const newMinedFish = currentMined - amount
-        const newCanFishBalance = parseFloat(userData.canFishBalance || "0") + canFishToAdd
+        const newCanFishBalance = Number(userData.canFishBalance ?? 0) + canFishToAdd
 
         await redis.hset(`user:${fid}`, {
             minedFish: newMinedFish.toString(),

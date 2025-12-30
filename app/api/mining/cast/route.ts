@@ -33,9 +33,8 @@ export async function POST(req: NextRequest) {
         })
 
         // Wallet Binding Rule: If wallet provided, verify mismatch
-        if (!dev && wallet && userData.wallet !== "N/A" && userData.wallet !== wallet) {
-            return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
-        }
+        // Wallet Binding Rule: Handled by ensureUser
+
 
         if (userData.mode !== "PAID_USER") {
             return NextResponse.json({ error: 'MINING_LOCK_FREE_MODE' }, { status: 403 })
@@ -151,6 +150,9 @@ export async function POST(req: NextRequest) {
             }
         })
     } catch (error: any) {
+        if (error.message === 'WALLET_MISMATCH') {
+            return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
+        }
         console.error('API_ERROR', {
             route: '/api/mining/cast',
             fid,

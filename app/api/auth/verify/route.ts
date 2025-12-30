@@ -47,18 +47,8 @@ export async function POST(req: NextRequest) {
 
         const userKey = `user:${fid}`
 
-        // Wallet Binding Rule: STRICT LOCK
-        // If wallet is "N/A" (legacy/placeholder), bind it now.
-        // If wallet is set and mismatch -> ERROR.
+        // Wallet Binding Rule: Handled by ensureUser
 
-        if (userData.wallet === "N/A" || !userData.wallet) {
-            console.log(`WALLET_BIND_INIT`, { fid, new: address })
-            await redis.hset(userKey, { wallet: address })
-            userData.wallet = address
-        } else if (userData.wallet !== address) {
-            console.error(`WALLET_MISMATCH`, { fid, registered: userData.wallet, incoming: address })
-            return NextResponse.json({ error: 'WALLET_MISMATCH' }, { status: 401 })
-        }
 
         // Set session marker to prevent session-less API calls
         await redis.set(`auth:session:${fid}`, address, { ex: 86400 }) // 24h session
@@ -75,6 +65,9 @@ export async function POST(req: NextRequest) {
             fid,
             error: error.message
         })
+        if (error.message === 'WALLET_MISMATCH') {
+            return NextResponse.json({ error: 'WALLET_MISMATCH' }, { status: 401 })
+        }
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }

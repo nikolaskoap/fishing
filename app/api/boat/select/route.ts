@@ -50,21 +50,10 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'UNAUTHORIZED_SESSION' }, { status: 401 })
             }
 
-            // 4. Wallet Binding Rule
-            // Only error if user already has a valid wallet set and it mismatches
-            // "N/A" or empty string counts as unset/valid to update (though update happens in auth/verify usually)
-            if (
-                !dev &&
-                wallet &&
-                userData.wallet &&
-                userData.wallet !== "N/A" &&
-                userData.wallet !== "" &&
-                userData.wallet !== wallet
-            ) {
-                return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
-            }
+            // 4. Wallet Binding Rule: Handled by ensureUser
 
-            const tierNum = parseInt(tier)
+
+            const tierNum = Number(tier)
             if (isNaN(tierNum)) {
                 return NextResponse.json({ error: 'INVALID_TIER_VALUE' }, { status: 400 })
             }
@@ -143,6 +132,10 @@ export async function POST(req: NextRequest) {
             fid,
             error: error?.message
         })
+
+        if (error.message === 'WALLET_MISMATCH') {
+            return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
+        }
 
         return NextResponse.json({
             error: 'Internal Server Error'

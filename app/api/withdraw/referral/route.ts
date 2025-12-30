@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(req: NextRequest) {
     try {
         const { userId, walletAddress, amountUSDC } = await req.json()
-        const usdcToWithdraw = parseFloat(amountUSDC)
+        const usdcToWithdraw = Number(amountUSDC)
 
         if (!userId || !walletAddress || isNaN(usdcToWithdraw) || usdcToWithdraw <= 0) {
             return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
         const userKey = `user:${userId}`
         const userData: any = await redis.hgetall(userKey)
-        const currentBalance = parseFloat(userData.referral_rewards_usdc || "0")
+        const currentBalance = Number(userData.referral_rewards_usdc ?? 0)
 
         if (currentBalance < usdcToWithdraw) {
             return NextResponse.json({ error: 'INSUFFICIENT_BALANCE' }, { status: 400 })
