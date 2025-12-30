@@ -1,10 +1,10 @@
 import { Redis } from '@upstash/redis'
 
-const url = process.env.UPSTASH_REDIS_REST_URL
-const token = process.env.UPSTASH_REDIS_REST_TOKEN
+const url = process.env.UPSTASH_REDIS_REST_URL || 'https://no-redis-configured.com'
+const token = process.env.UPSTASH_REDIS_REST_TOKEN || 'no-redis-configured'
 
-if (!url || !token) {
-    throw new Error('Redis configuration missing. Please check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in .env')
+if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    console.warn('⚠️ Redis env missing - Application will fail at runtime if DB accessed. (OK for build time)')
 }
 
 export const redis = new Redis({
