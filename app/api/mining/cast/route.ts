@@ -1,5 +1,5 @@
 import { redis } from '@/lib/redis'
-import { BOAT_CONFIG, FISH_VALUES, DIFFICULTY_CONFIG, GLOBAL_CONFIG, BoatTier } from '@/lib/constants'
+import { BOAT_CONFIG, FISH_VALUES, DIFFICULTY_CONFIG, GLOBAL_CONFIG, BoatTier, isDeveloper } from '@/lib/constants'
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { ensureUser } from '@/lib/ensureUser'
@@ -20,8 +20,20 @@ export async function POST(req: NextRequest) {
         // 2. Ensure User Data exists using ensureUser
         const userData = await ensureUser(redis, fid, wallet)
 
+        if (!userData) {
+            return NextResponse.json({ error: 'USER_DATA_NOT_FOUND' }, { status: 500 })
+        }
+
+        const dev = isDeveloper(fid)
+
+        console.log("WALLET_DEBUG", {
+            dev,
+            requestWallet: wallet,
+            redisWallet: userData.wallet
+        })
+
         // Wallet Binding Rule: If wallet provided, verify mismatch
-        if (wallet && userData.wallet !== "N/A" && userData.wallet !== wallet) {
+        if (!dev && wallet && userData.wallet !== "N/A" && userData.wallet !== wallet) {
             return NextResponse.json({ error: 'UNAUTHORIZED_SESSION', detail: 'Wallet mismatch' }, { status: 401 })
         }
 

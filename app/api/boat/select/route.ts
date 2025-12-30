@@ -30,6 +30,10 @@ export async function POST(req: NextRequest) {
         // 1. Ensure User Data exists using ensureUser (MUST BE FIRST)
         const userData = await ensureUser(redis, fid, wallet)
 
+        if (!userData) {
+            return NextResponse.json({ error: 'USER_DATA_MISSING' }, { status: 500 })
+        }
+
         // 2. Race Condition Protection (Lock)
         const lockKey = `lock:boat:${fid}`
         const locked = await redis.set(lockKey, '1', { nx: true, ex: 5 })
@@ -50,6 +54,7 @@ export async function POST(req: NextRequest) {
             // Only error if user already has a valid wallet set and it mismatches
             // "N/A" or empty string counts as unset/valid to update (though update happens in auth/verify usually)
             if (
+                !dev &&
                 wallet &&
                 userData.wallet &&
                 userData.wallet !== "N/A" &&

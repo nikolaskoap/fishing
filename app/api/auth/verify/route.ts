@@ -36,6 +36,15 @@ export async function POST(req: NextRequest) {
 
         // Initialize/Update User Data using ensureUser
         const userData = await ensureUser(redis, fid, address)
+
+        if (!userData) {
+            console.error("ENSURE_USER_FAILED", { fid, wallet: address })
+            return NextResponse.json(
+                { error: "USER_INITIALIZATION_FAILED" },
+                { status: 500 }
+            )
+        }
+
         const userKey = `user:${fid}`
 
         // Wallet Binding Rule: STRICT LOCK
