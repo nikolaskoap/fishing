@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 7. Bucket Action (Only on SUCCESS)
-        const bucket = JSON.parse(userData.distributionBucket || "[]")
+        const bucket = JSON.parse(String(userData.distributionBucket || "[]"))
         const cursor = Number(userData.currentIndex ?? 0)
 
         if (cursor >= bucket.length || bucket.length === 0) {
