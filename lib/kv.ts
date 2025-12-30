@@ -1,11 +1,11 @@
 import { MiniAppNotificationDetails } from "@farcaster/miniapp-sdk";
 import { Redis } from "@upstash/redis";
 
-const url = process.env.UPSTASH_REDIS_REST_URL
-const token = process.env.UPSTASH_REDIS_REST_TOKEN
+const url = process.env.UPSTASH_REDIS_REST_URL || 'https://no-redis-configured.com'
+const token = process.env.UPSTASH_REDIS_REST_TOKEN || 'no-redis-configured'
 
-if (!url || !token) {
-  throw new Error('Redis configuration missing in lib/kv.ts. Please check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN')
+if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+  console.warn('⚠️ Redis env missing in lib/kv.ts - Usage will fail at runtime. (OK for build time)')
 }
 
 const redis = new Redis({
