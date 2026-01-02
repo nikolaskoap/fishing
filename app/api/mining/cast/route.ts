@@ -204,6 +204,7 @@ export async function POST(req: NextRequest) {
             stats: {
                 minedFish: newMinedFish,
                 xp: newXp,
+                currentIndex: cursor + 1,
                 hourlyCatches: hourlyCatches + 1,
                 difficultyMult
             }

@@ -234,27 +234,27 @@ export default function MainGameScreen() {
     }
 
     try {
-      // 1. Call real server-side cast
-      const result = await miningService.cast(userId || fid.toString())
+      // 1. Call real server-side cast with wallet
+      const result = await miningService.cast(userId || fid.toString(), address)
 
       if (result.status === "SUCCESS") {
-        // 2. Update all stats immediately based on server response
-        setMinedFish(result.minedFish)
-        setXp(result.xp)
-        setBucketIndex(result.currentIndex)
+        // 2. Update all stats immediately based on server response (nested structure)
+        setMinedFish(result.stats.minedFish)
+        setXp(result.stats.xp)
+        setBucketIndex(result.stats.currentIndex)
 
         // Update refs for periodic saver
-        minedFishRef.current = result.minedFish
-        xpRef.current = result.xp
+        minedFishRef.current = result.stats.minedFish
+        xpRef.current = result.stats.xp
 
         if (announceOn) {
-          console.log(`[PAID MODE] Caught ${result.fishType}! +${result.fishValue} fish`)
+          console.log(`[PAID MODE] Caught ${result.fish.type}! +${result.fish.value} fish`)
         }
 
         // 3. Show catch notification popup
         setCatchNotification({
-          rarity: result.fishType as FishRarity,
-          value: result.fishValue
+          rarity: result.fish.type as FishRarity,
+          value: result.fish.value
         })
       } else if (result.status === "SESSION_EXPIRED") {
         setIsAutoCastActive(false)
@@ -277,7 +277,7 @@ export default function MainGameScreen() {
     } catch (e) {
       console.error("Mining error in PAID mode", e)
     }
-  }, [fid, announceOn, activeBoatLevel])
+  }, [fid, announceOn, activeBoatLevel, userId, address])
 
   // Simple animation loop for miners count only
   useEffect(() => {
