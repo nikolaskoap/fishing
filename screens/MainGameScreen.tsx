@@ -129,6 +129,19 @@ export default function MainGameScreen() {
         localStorage.setItem('userId', authData.userId)
           ; (window as any).userId = authData.userId
 
+        // Check for referral and send to backend for new users
+        const referrerFid = localStorage.getItem('referrerFid')
+        if (referrerFid) {
+          console.log('🎣 Registering referral:', referrerFid)
+          await miningService.saveUser({
+            fid,
+            walletAddress: address,
+            referrerFid
+          })
+          // Clear after first use to prevent duplicate registrations
+          localStorage.removeItem('referrerFid')
+        }
+
         const data = await miningService.getUser(fid)
 
         if (data && !data.error) {

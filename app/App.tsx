@@ -19,8 +19,17 @@ export default function App() {
     const fid = context?.user.fid
     const userId = context?.user.username || fid?.toString()
 
+    // Capture Referral Parameter from URL
     useEffect(() => {
         if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search)
+            const ref = urlParams.get('ref')
+
+            if (ref) {
+                localStorage.setItem('referrerFid', ref)
+                console.log('🎣 Referrer captured:', ref)
+            }
+
             const { isDeveloper } = require('@/lib/constants');
             (window as any).isDeveloper = isDeveloper(fid);
         }

@@ -138,6 +138,65 @@ export async function POST(req: NextRequest) {
             success: true
         }))
 
+        // 🎁 REFERRAL REWARD SYSTEM
+        const referredBy = userData.referredBy
+        if (referredBy && referredBy !== fid) {
+            try {
+                const {
+                    activateReferralIfEligible,
+                    checkAndRewardMilestone
+                } = await import('@/lib/referral-helpers')
+                const { REFERRAL_CONFIG } = await import('@/lib/referral-config')
+
+                // Try to activate referral if eligible
+                const isActive = await activateReferralIfEligible(fid)
+
+                if (isActive) {
+                    const totalCasts = Number(updateData.totalSuccessfulCasts)
+                    const totalFish = newMinedFish
+
+                    // 1️⃣ First Activation Reward
+                    if (totalCasts === REFERRAL_CONFIG.ACTIVATION.MIN_CASTS) {
+                        const rewarded = await checkAndRewardMilestone(
+                            referredBy,
+                            fid,
+                            'first_active',
+                            REFERRAL_CONFIG.MILESTONES.FIRST_ACTIVE.reward
+                        )
+
+                        if (rewarded) {
+                            // Update active referral count
+                            const activeCount = Number(await redis.hget(`referral:${referredBy}`, 'activeReferred') || 0)
+                            await redis.hset(`referral:${referredBy}`, { activeReferred: String(activeCount + 1) })
+                        }
+                    }
+
+                    // 2️⃣ Cast Milestone (at exactly 10 casts)
+                    if (totalCasts === 10) {
+                        await checkAndRewardMilestone(
+                            referredBy,
+                            fid,
+                            'cast_10',
+                            REFERRAL_CONFIG.MILESTONES.CAST_10.reward
+                        )
+                    }
+
+                    // 3️⃣ Fish Milestone (at 50+ fish, one-time)
+                    if (totalFish >= 50) {
+                        await checkAndRewardMilestone(
+                            referredBy,
+                            fid,
+                            'fish_50',
+                            REFERRAL_CONFIG.MILESTONES.FISH_50.reward
+                        )
+                    }
+                }
+            } catch (refError) {
+                console.error('Referral reward error (non-blocking):', refError)
+                // Don't fail the mining operation if referral logic fails
+            }
+        }
+
         return NextResponse.json({
             status: 'SUCCESS',
             castId,

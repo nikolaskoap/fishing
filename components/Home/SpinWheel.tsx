@@ -1,64 +1,49 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 
 interface SpinWheelProps {
     onWin: (amount: number) => void
     tickets: number
 }
 
-const WHEEL_ORDER = [32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26, 0];
-const RED_NUMBERS = [32, 19, 21, 25, 34, 27, 36, 30, 23, 5, 16, 1, 14, 9, 18, 7, 12, 3];
-
-// Map specific Roulette Numbers to Prizes
-// User requested: 0.5, 0.05, 1, 5, 10, 100. Rest 0.
-// We map these to specific numbers on the wheel to distribute them.
-const PRIZE_VALUES: Record<number, number> = {
-    0: 100,   // Green Zero = Jackpot
-    32: 10,   // Red
-    15: 0,    // Black (0)
-    19: 5,    // Red
-    4: 0, 21: 0.5, 2: 1, 25: 0, 17: 0.5, 34: 0,
-    6: 0.5, 27: 0.05, 13: 0.5, 36: 0.05, 11: 0, 30: 0.05,
-    8: 0.5, 23: 0, 10: 0.5, 5: 0, 24: 0.5, 16: 0,
-    33: 0.5, 1: 0.05, 20: 0.5, 14: 0.05, 31: 0.5, 9: 0,
-    22: 0.5, 18: 0, 29: 0.5, 7: 0.05, 28: 0.5, 12: 0,
-    35: 0.5, 3: 0.05, 26: 0.5
-    // Any undefined will defaults to 0 in logic below if missed
-};
-
-// Map of Number -> Angle (from LESS .spinto mixins)
-const ANGLE_MAP: Record<number, number> = {
-    1: 278, 2: 106, 3: 30, 4: 87, 5: 238, 6: 146, 7: 354, 8: 207, 9: 316, 10: 228,
-    11: 187, 12: 12, 13: 166, 14: 298, 15: 67, 16: 258, 17: 125, 18: 335, 19: 77, 20: 288,
-    21: 96, 22: 326, 23: 218, 24: 248, 25: 116, 26: 40, 27: 156, 28: 3, 29: 345, 30: 196,
-    31: 307, 32: 58, 33: 268, 34: 135, 35: 381, 36: 177, 0: 49
-};
+// Map Rarity to Image Assets (Verified paths based on directory search)
+const PRIZE_IMAGES: Record<string, string> = {
+    'LEGENDARY': '/assets/image/legendary fish.jpg',
+    'EPIC': '/assets/image/fish rare.jpg',
+    'RARE': '/assets/image/fish uncommon.jpg',
+    'COMMON': '/assets/image/fish cummon.jpg',
+    'TRY_AGAIN': '/assets/image/icon.png'
+}
 
 export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
     const [isSpinning, setIsSpinning] = useState(false)
-    const [result, setResult] = useState<{ num: number, val: number, color: string } | null>(null)
-    const [ballRotation, setBallRotation] = useState<number>(0)
-    const [isResting, setIsResting] = useState(false)
-    const [history, setHistory] = useState<{ val: number, color: string }[]>([])
+    const [result, setResult] = useState<{ rarity: string, val: number } | null>(null)
+    const [rotation, setRotation] = useState<number>(0)
+    const [showResultPopup, setShowResultPopup] = useState(false)
 
-    // Logic to spin
+    useEffect(() => {
+        if (result) {
+            setShowResultPopup(true)
+        } else {
+            setShowResultPopup(false)
+        }
+    }, [result])
+
     const spin = async () => {
         if (isSpinning || tickets <= 0) return
 
         setIsSpinning(true)
-        setIsResting(false)
         setResult(null)
+        setShowResultPopup(false)
 
         try {
-            // userId and fid should be passed via props or context
-            // For now, we'll try to find userId in localStorage if not in props
             const userId = (window as any).userId || localStorage.getItem('userId')
 
             const res = await fetch('/api/spin/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fid: userId }) // userId contains FID
+                body: JSON.stringify({ fid: userId })
             })
             const data = await res.json()
 
@@ -68,34 +53,18 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
                 return
             }
 
-            const winningPrize = data.prize
+            const { rarity, prize } = data
 
-            // Find slots that have this prize (Fallback to mapping prize to num)
-            let chosenNum = 15 // default try again
-            if (winningPrize === 0) chosenNum = 15
-            else if (winningPrize === 0.05) chosenNum = 27
-            else if (winningPrize === 0.5) chosenNum = 21
-            else if (winningPrize === 5) chosenNum = 19
-            else if (winningPrize === 50) chosenNum = 32
-            else if (winningPrize === 100) chosenNum = 0
+            // Visual Spin: Add extra spins (1800-2160 deg) + random variance
+            const newRotation = rotation + 1800 + Math.random() * 360
+            setRotation(newRotation)
 
-            const angle = ANGLE_MAP[chosenNum] || 0
-            const spins = 8
-            const targetRotation = (360 * -spins) + angle
-
-            setBallRotation(targetRotation)
-
-            // Animation Time (9s)
+            // 5 second animation
             setTimeout(() => {
-                const color = chosenNum === 0 ? 'green' : RED_NUMBERS.includes(chosenNum) ? 'red' : 'black'
-
-                setResult({ num: chosenNum, val: winningPrize, color })
-                setIsResting(true)
+                setResult({ rarity, val: prize })
                 setIsSpinning(false)
-
-                onWin(winningPrize)
-                setHistory(prev => [{ val: winningPrize, color }, ...prev].slice(0, 5))
-            }, 9000)
+                onWin(prize) // This updates the parent balance
+            }, 5000)
 
         } catch (e) {
             console.error("Spin error", e)
@@ -103,240 +72,116 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
         }
     }
 
-    const reset = () => {
-        setIsResting(false)
-        setResult(null)
-        setBallRotation(0)
-    }
-
     return (
-        <div className="flex flex-col items-center justify-center p-4 w-full overflow-hidden relative">
+        <div className="flex flex-col items-center justify-center p-4 w-full relative min-h-[400px]">
 
             <style jsx>{`
-                .plate {
-                    width: 300px;
-                    height: 300px;
-                    background-color: gray;
-                    border-radius: 50%;
-                    position: relative;
-                    margin: 20px auto;
-                    animation: rotate 24s infinite linear;
-                    box-shadow: 0 0 0 10px #333, 0 0 0 12px gold;
+                @keyframes bounceSubtle {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.05); }
                 }
-                .plate:before {
-                    content: '';
-                    position: absolute;
-                    top: 12%; left: 12%; right: 12%; bottom: 12%;
-                    border: 1px solid silver;
-                    border-radius: 50%;
-                    background: rgba(0,0,0,0.65);
-                    z-index: 1;
+                .animate-bounce-subtle {
+                    animation: bounceSubtle 2s infinite ease-in-out;
                 }
-                .number {
-                    width: 32px;
-                    height: 150px; /* half of plate */
-                    position: absolute;
-                    top: 0;
-                    left: calc(50% - 16px);
-                    transform-origin: 50% 100%;
-                    text-align: center;
-                    border-top: 150px solid black;
-                    border-left: 16px solid transparent;
-                    border-right: 16px solid transparent;
-                    box-sizing: border-box;
-                    z-index: 0;
+                @keyframes fadeInScale {
+                    from { opacity: 0; transform: scale(0.5); }
+                    to { opacity: 1; transform: scale(1); }
                 }
-                .number:nth-child(odd) {
-                    border-top-color: #D00; /* Red */
+                .fade-in-scale {
+                    animation: fadeInScale 0.3s ease-out forwards;
                 }
-                .number:nth-child(37) { /* 0 usually green, but here index 37 is 0? */
-                    border-top-color: green;
-                }
-                .pit {
-                    color: #fff;
-                    padding-top: 12px;
-                    display: block;
-                    font-size: 12px;
-                    transform: scale(1, 1.8);
-                    position: absolute;
-                    top: -150px;
-                    left: -16px;
-                    width: 32px;
-                    text-align: center;
-                }
-                .inner {
-                    width: 100%;
-                    height: 100%;
-                    display: block;
-                    position: relative;
-                    list-style: none;
-                    margin: 0; padding: 0;
-                }
-                .inner:after { /* Center piece */
-                    content: '';
-                    position: absolute;
-                    z-index: 3;
-                    top: 24%; left: 24%; right: 24%; bottom: 24%;
-                    background: #222;
-                    border: 3px solid #111;
-                    border-radius: 50%;
-                }
-                /* The Ball */
-                .ball {
-                    position: absolute;
-                    top: 24%; 
-                    bottom: 21%;
-                    left: 24%;
-                    right: 22%;
-                    border-radius: 50%;
-                    z-index: 5;
-                    pointer-events: none;
-                    transition: transform 9s ease-out;
-                }
-                .ball:after {
-                    content: '•';
-                    color: white;
-                    font-size: 40px;
-                    display: block;
-                    position: absolute;
-                    top: -15px; 
-                }
-                .inner.rest .ball {
-                     /* Logic handled via transform in JS, but maybe position adjustment? */
-                     /* User CSS says: top: 25%; right: 25%; ... transition top... */
-                     /* We will simulate 'rest' by just keeping the ball at the rotation. */
-                }
-
-                @keyframes rotate {
-                    0% { transform: rotateZ(0deg); }
-                    100% { transform: rotateZ(360deg); }
-                }
-
-                /* Data Reveal */
-                .data {
-                    position: absolute;
-                    top: 30%; left: 30%; right: 30%; bottom: 30%;
-                    z-index: 100;
-                    perspective: 2000px;
-                    animation: rotate 24s reverse linear infinite; /* Counter rotate to stay upright */
-                }
-                .data-inner {
-                    position: relative;
-                    width: 100%; height: 100%;
-                    text-align: center;
-                    transition: transform 0.7s;
-                    transform-style: preserve-3d;
-                }
-                .data.reveal .data-inner {
-                    transform: rotateY(180deg);
-                }
-                .data .mask, .data .result {
-                    position: absolute;
-                    top: 0; left: 0; right: 0; bottom: 0;
-                    backface-visibility: hidden;
-                    border-radius: 50%;
-                    display: flex;
-                    flex-col;
-                    justify-content: center;
-                    align-items: center;
-                }
-                .mask { color: #fff; font-size: 14px; padding: 10px; background: transparent; }
-                .result {
-                    transform: rotateY(180deg);
-                    background: green;
-                    flex-direction: column;
-                }
-                .result-number { font-size: 48px; font-weight: bold; line-height: 1; }
-                .result-color { font-size: 14px; text-transform: uppercase; }
-
             `}</style>
 
-            <div className="main transform scale-75 md:scale-100">
-                <div className="plate">
-                    <ul className={`inner ${isResting ? 'rest' : ''}`}>
-                        {WHEEL_ORDER.map((num, i) => (
-                            <li
-                                key={num}
-                                className="number"
-                                style={{
-                                    transform: `rotateZ(${i * (360 / 37)}deg)`,
-                                    borderTopColor: num === 0 ? 'green' : (i % 2 === 0 ? 'red' : 'black')
-                                    // Logic for color: CSS used nth-child(odd) -> red.
-                                    // My WHEEL_ORDER has 37 items.
-                                    // 32 (idx 0) -> Odd child (1st) -> Red.
-                                    // 15 (idx 1) -> Even child (2nd) -> Black.
-                                    // Let's use i % 2 === 0 for Red (1st child is index 0 in JS but child 1 in CSS).
-                                    // Wait, 1st child (index 0) is Red.
-                                    // 2nd child (index 1) is Black.
-                                    // 37th child (index 36) is Green (0).
-                                }}
-                            >
-                                <span className="pit" style={{ transform: 'scale(1, 2) translateY(-5px)', fontSize: '10px' }}>
-                                    {PRIZE_VALUES[num] ?? 0}
-                                </span>
-                            </li>
-                        ))}
+            {/* WHEEL CONTAINER */}
+            <div className="relative w-[280px] h-[280px] md:w-[320px] md:h-[320px] mb-8">
 
-                        {/* The Ball */}
-                        <div
-                            className="ball"
-                            style={{
-                                transform: `rotateZ(${ballRotation}deg)`,
-                            }}
-                        />
-                    </ul>
+                {/* POINTER */}
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-20 drop-shadow-xl">
+                    <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[35px] border-t-red-600"></div>
+                </div>
 
-                    {/* Center Data Display (Counter-Rotating) */}
-                    <div className={`data ${result ? 'reveal' : ''}`}>
-                        <div className="data-inner">
-                            <div className="mask flex items-center justify-center h-full">
-                                <span className="pt-8">Place Bets</span>
-                            </div>
-                            <div className="result" style={{ backgroundColor: result?.color === 'red' ? '#D00' : result?.color === 'black' ? '#222' : 'green' }}>
-                                <div className="result-number" style={{ fontSize: result && result.val < 1 ? '32px' : '48px' }}>
-                                    {result?.val}
-                                </div>
-                                <div className="result-color" style={{ fontSize: '12px' }}>{result?.val === 0 ? 'TRY AGAIN' : 'WIN!'}</div>
-                            </div>
-                        </div>
-                    </div>
-
+                {/* ROTATING WHEEL IMAGE */}
+                <div
+                    className="w-full h-full rounded-full overflow-hidden"
+                    style={{
+                        transform: `rotate(${rotation}deg)`,
+                        transition: 'transform 5s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                        boxShadow: '0 0 20px rgba(0,0,0,0.5)'
+                    }}
+                >
+                    <img
+                        src="/assets/image/spin.png"
+                        alt="Spin Wheel"
+                        className="w-full h-full object-cover"
+                        // Using mix-blend-mode to make white background transparent if needed
+                        style={{ mixBlendMode: 'multiply' }}
+                        onError={(e) => {
+                            e.currentTarget.src = "/assets/image/icon.png" // Fallback
+                        }}
+                    />
                 </div>
             </div>
 
-            <div className="w-full max-w-xs space-y-4 z-10">
+            {/* RESULT POPUP */}
+            {showResultPopup && result && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center fade-in-scale">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setResult(null)} />
+
+                    {/* Card Container */}
+                    <div className="bg-[#0f172a] border-2 border-yellow-500/50 p-6 rounded-2xl shadow-[0_0_50px_rgba(234,179,8,0.2)] relative z-10 flex flex-col items-center text-center max-w-xs w-full mx-4 animate-bounce-subtle">
+
+                        {/* Rarity Title */}
+                        <h2 className={`text-2xl font-black uppercase mb-4 tracking-widest
+                            ${result.rarity === 'LEGENDARY' ? 'text-yellow-400 drop-shadow-[0_0_10px_gold]' :
+                                result.rarity === 'EPIC' ? 'text-purple-400 drop-shadow-[0_0_10px_purple]' :
+                                    result.rarity === 'RARE' ? 'text-blue-400' : 'text-green-400'}
+                        `}>
+                            {result.rarity === 'COMMON' ? 'GOTCHA!' : result.rarity}
+                        </h2>
+
+                        {/* Fish Image */}
+                        <div className="w-32 h-32 mb-4 relative">
+                            <img
+                                src={PRIZE_IMAGES[result.rarity] || '/assets/image/icon.png'}
+                                alt={result.rarity}
+                                className="w-full h-full object-contain drop-shadow-2xl"
+                            />
+                        </div>
+
+                        {/* Reward Text */}
+                        <div className="text-white text-lg font-bold mb-1">
+                            You caught a Fish!
+                        </div>
+                        <div className="text-yellow-400 text-3xl font-black mb-6 flex items-center gap-2">
+                            +{result.val} <span className="text-sm text-yellow-200/70 font-normal">MINED FISH</span>
+                        </div>
+
+                        <button
+                            onClick={() => setResult(null)}
+                            className="w-full py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-bold text-lg rounded-xl shadow-lg transform transition active:scale-95"
+                        >
+                            CLAIM REWARD
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* BUTTON */}
+            <div className="w-full max-w-xs z-10">
                 <button
                     onClick={spin}
                     disabled={isSpinning || tickets <= 0}
                     className={`
-                        w-full py-4 rounded-xl font-bold text-xl uppercase tracking-widest transition-all transform active:scale-95 shadow-lg
+                        w-full py-4 rounded-xl font-bold text-xl uppercase tracking-widest transition-all transform active:scale-95 shadow-lg border-b-4
                         ${isSpinning || tickets <= 0
-                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed border border-gray-600'
-                            : 'bg-green-600 hover:bg-green-500 text-white border-2 border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.4)]'
+                            ? 'bg-gray-800 text-gray-500 border-gray-900 cursor-not-allowed'
+                            : 'bg-green-600 hover:bg-green-500 text-white border-green-800 shadow-green-500/20'
                         }
                     `}
                 >
-                    {isSpinning ? 'SPINNING...' : 'SPIN'}
+                    {isSpinning ? 'SPINNING...' : 'SPIN THE WHEEL'}
                 </button>
-
-                {isResting && (
-                    <button onClick={reset} className="w-full py-2 bg-gray-800 text-gray-300 rounded-lg text-xs uppercase tracking-wider hover:bg-gray-700">
-                        New Game
-                    </button>
-                )}
-
-                {/* Previous Results */}
-                {history.length > 0 && (
-                    <div className="flex justify-center gap-2 mt-2">
-                        {history.map((h, i) => (
-                            <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white border border-white/20 shadow-md ${h.color === 'red' ? 'bg-red-600' : h.color === 'black' ? 'bg-black' : 'bg-green-600'}`}>
-                                {h.val}
-                            </div>
-                        ))}
-                    </div>
-                )}
             </div>
         </div>
     )
 }
-

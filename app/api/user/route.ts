@@ -82,15 +82,41 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'UNAUTHORIZED_SESSION' }, { status: 401 })
         }
 
-        // Referral Logic Integration (Only for new users)
+        // 🔒 ANTI-ABUSE: Wallet Binding Check
+        if (walletAddress) {
+            const existingUserForWallet = await redis.get(`wallet:${walletAddress}:user`)
+
+            if (existingUserForWallet && existingUserForWallet !== fid) {
+                return NextResponse.json({
+                    error: 'WALLET_ALREADY_BOUND',
+                    message: 'This wallet is already used by another account'
+                }, { status: 400 })
+            }
+
+            // Bind wallet to this user
+            await redis.set(`wallet:${walletAddress}:user`, fid)
+        }
+
+        // 🎣 Referral Logic Integration (Only for new users)
         if (referrerFid && referrerFid !== fid) {
             const alreadyExists = await redis.exists(`user:${fid}`)
             const alreadyReferred = await redis.get(`user:${fid}:referred_by`)
 
             if (!alreadyExists && !alreadyReferred) {
-                await redis.set(`user:${fid}:referred_by`, referrerFid)
-                await redis.hincrby(`user:${referrerFid}`, 'referralCount', 1)
+                // Store referral relationship
+                await redis.hset(`user:${fid}`, { referredBy: referrerFid })
+
+                // Update referrer stats (SAFE increments)
+                const currentCount = Number(await redis.hget(`user:${referrerFid}`, 'referralCount') || 0)
+                await redis.hset(`user:${referrerFid}`, { referralCount: String(currentCount + 1) })
+
+                const totalReferred = Number(await redis.hget(`referral:${referrerFid}`, 'totalReferred') || 0)
+                await redis.hset(`referral:${referrerFid}`, { totalReferred: String(totalReferred + 1) })
+
+                // Add to invitees set
                 await redis.sadd(`user:${referrerFid}:invitees`, fid)
+
+                console.log(`🎣 New Referral: ${fid} referred by ${referrerFid}`)
             }
         }
 
