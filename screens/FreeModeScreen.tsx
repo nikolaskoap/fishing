@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { SpinMenu } from '@/components/Home/SpinMenu'
+import { InviteMenu } from '@/components/Home/InviteMenu'
 import { useFrame } from '@/components/farcaster-provider'
 import { miningService } from '@/services/mining.service'
 
@@ -14,9 +15,11 @@ export default function FreeModeScreen({ onPurchaseBoat }: FreeModeScreenProps) 
     const fid = context?.user.fid
 
     const [isSpinOpen, setIsSpinOpen] = useState(false)
+    const [isInviteOpen, setIsInviteOpen] = useState(false)
     const [spinTickets, setSpinTickets] = useState(0)
     const [lastDailySpin, setLastDailySpin] = useState(0)
     const [minedFish, setMinedFish] = useState(0)
+    const [referralCount, setReferralCount] = useState(0)
 
     useEffect(() => {
         if (!fid) return
@@ -27,6 +30,7 @@ export default function FreeModeScreen({ onPurchaseBoat }: FreeModeScreenProps) 
                     setSpinTickets(parseInt(data.spinTickets || '0'))
                     setLastDailySpin(parseInt(data.lastDailySpin || '0'))
                     setMinedFish(parseFloat(data.minedFish || '0'))
+                    setReferralCount(parseInt(data.referralCount || '0'))
                 }
             } catch (e) {
                 console.error("Failed to load user data in FreeMode", e)
@@ -90,7 +94,7 @@ export default function FreeModeScreen({ onPurchaseBoat }: FreeModeScreenProps) 
                         <span className="text-[10px] font-black">DAILY SPIN</span>
                     </button>
                     <button
-                        onClick={() => alert("Invite & Earn feature coming soon!")}
+                        onClick={() => setIsInviteOpen(true)}
                         className="bg-[#4ADE80] p-6 rounded-[2rem] border-b-6 border-[#166534] flex flex-col items-center shadow-xl hover:translate-y-1 hover:border-b-4 transition-all"
                     >
                         <span className="text-2xl mb-1">👥</span>
@@ -113,6 +117,13 @@ export default function FreeModeScreen({ onPurchaseBoat }: FreeModeScreenProps) 
                 canSpinDaily={canSpinDaily}
                 nextDailySpin={lastDailySpin + (24 * 3600 * 1000)}
                 onSpinSuccess={handleSpinWin}
+            />
+
+            <InviteMenu
+                isOpen={isInviteOpen}
+                onClose={() => setIsInviteOpen(false)}
+                referralCount={referralCount}
+                fid={fid}
             />
         </div>
     )
