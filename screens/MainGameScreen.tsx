@@ -235,7 +235,7 @@ export default function MainGameScreen() {
 
     try {
       // 1. Call real server-side cast with wallet
-      const result = await miningService.cast(userId || fid.toString(), address)
+      const result = await miningService.cast(userId || fid.toString())
 
       if (result.status === "SUCCESS") {
         // 2. Update all stats immediately based on server response (nested structure)
