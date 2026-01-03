@@ -113,8 +113,6 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
                         src="/assets/image/spin.jpg"
                         alt="Spin Wheel"
                         className="w-full h-full object-cover"
-                        // Using mix-blend-mode to make white background transparent if needed
-                        style={{ mixBlendMode: 'multiply' }}
                         onError={(e) => {
                             e.currentTarget.src = "/assets/image/icon.png" // Fallback
                         }}

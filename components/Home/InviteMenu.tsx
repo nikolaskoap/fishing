@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 
 interface InviteMenuProps {
     isOpen: boolean
@@ -10,9 +10,22 @@ interface InviteMenuProps {
 }
 
 export function InviteMenu({ isOpen, onClose, referralCount, fid }: InviteMenuProps) {
+    const [copied, setCopied] = useState(false)
+
     if (!isOpen) return null
 
-    const inviteLink = `https://warpcast.com/~/compose?text=Join me on Base Fishing!&embeds[]=https://base-fishing.vercel.app/?ref=${fid}`
+    const referralLink = `https://base-fishing.vercel.app/?ref=${fid}`
+    const inviteLink = `https://warpcast.com/~/compose?text=Join me on Base Fishing!&embeds[]=${referralLink}`
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(referralLink)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        } catch (err) {
+            console.error('Failed to copy:', err)
+        }
+    }
 
     return (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 animate-fade-in">
@@ -34,6 +47,28 @@ export function InviteMenu({ isOpen, onClose, referralCount, fid }: InviteMenuPr
                         <div>
                             <p className="text-xs font-black">LUCKY TICKET</p>
                             <p className="text-[10px] opacity-40">Get 1 spin for every 3 invites</p>
+                        </div>
+                    </div>
+
+                    {/* Referral Link Display with Copy Button */}
+                    <div className="bg-black/30 p-4 rounded-2xl border border-white/10">
+                        <p className="text-[8px] font-black opacity-40 uppercase mb-2">Your Referral Link</p>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={referralLink}
+                                readOnly
+                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-mono text-white/70 focus:outline-none focus:border-cyan-400/50"
+                            />
+                            <button
+                                onClick={handleCopy}
+                                className={`px-3 py-2 rounded-lg font-black text-[10px] transition-all ${copied
+                                        ? 'bg-green-500 text-black'
+                                        : 'bg-cyan-500 hover:bg-cyan-400 text-black'
+                                    }`}
+                            >
+                                {copied ? '✓' : '📋'}
+                            </button>
                         </div>
                     </div>
 
