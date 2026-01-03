@@ -260,11 +260,17 @@ export default function MainGameScreen() {
         setIsAutoCastActive(false)
         alert("Session expired. Please restart Auto-Cast.")
       } else if (result.status === "MISS") {
+        // Update XP from server response (even on MISS)
+        if (result.stats?.xp) {
+          setXp(result.stats.xp)
+          xpRef.current = result.stats.xp
+        }
+
         setCatchNotification({
           rarity: 'JUNK',
           value: 0,
           label: "MISS!",
-          subLabel: "Better luck next time"
+          subLabel: "+2 XP - Keep trying!"
         })
       } else if (result.status === "CAP_REACHED") {
         setCatchNotification({
