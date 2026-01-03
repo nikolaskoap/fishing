@@ -68,7 +68,30 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'INVALID_BOAT_CONFIG', boatLevel: numericBoatLevel }, { status: 500 })
         }
 
-        // 5. Caps Check (Hourly & Daily)
+        // 5. Early Player Boost (Progressive Difficulty)
+        const totalFish = Number(userData.minedFish || 0)
+        let playerBoost = 1.0
+
+        if (totalFish < 50) {
+            // Beginner: +50% success rate
+            playerBoost = 1.5
+        } else if (totalFish < 200) {
+            // Intermediate: gradual decrease 1.5x → 1.0x
+            const progress = (totalFish - 50) / 150
+            playerBoost = 1.5 - (progress * 0.5)
+        } else if (totalFish < 500) {
+            // Advanced: normal difficulty
+            playerBoost = 1.0
+        } else if (totalFish < 1000) {
+            // Veteran: gradual penalty 1.0x → 0.7x
+            const progress = (totalFish - 500) / 500
+            playerBoost = 1.0 - (progress * 0.3)
+        } else {
+            // Master: inflation control
+            playerBoost = 0.7
+        }
+
+        // 6. Caps Check (Hourly & Daily)
         const hourlyCatches = Number(userData.hourlyCatches ?? 0)
         if (hourlyCatches >= config.fishPerHour) {
             return NextResponse.json({ error: 'HOURLY_CAP_REACHED' }, { status: 429 })
@@ -80,19 +103,33 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'DAILY_CAP_REACHED' }, { status: 429 })
         }
 
-        // 6. Probability Success Logic (Server-Side RNG)
+        // 7. Calculate Final Success Rate with Player Boost
         const roll = crypto.randomInt(0, 1000) / 1000
-        const successRate = config.catchingRate * difficultyMult
+        const successRate = config.catchingRate * difficultyMult * playerBoost
         const isSuccess = roll < successRate
 
         // Update Last Cast immediately
         await redis.hset(`user:${fid}`, { lastCastAt: now.toString() })
 
+        // Update XP even on MISS (effort reward)
         if (!isSuccess) {
-            return NextResponse.json({ status: 'MISS', difficultyMult })
+            const missXp = Number(userData.xp ?? 0) + 2
+            await redis.hset(`user:${fid}`, { xp: missXp.toString() })
+
+            return NextResponse.json({
+                status: 'MISS',
+                difficultyMult,
+                playerBoost,
+                finalRate: successRate,
+                stats: {
+                    xp: missXp,
+                    minedFish: Number(userData.minedFish ?? 0),
+                    currentIndex: Number(userData.currentIndex ?? 0)
+                }
+            })
         }
 
-        // 7. Bucket Action (Only on SUCCESS)
+        // 8. Bucket Action (Only on SUCCESS)
         const bucket = JSON.parse(String(userData.distributionBucket || "[]"))
         const cursor = Number(userData.currentIndex ?? 0)
 
@@ -103,9 +140,22 @@ export async function POST(req: NextRequest) {
         const fishType = bucket[cursor]
         const fishValue = FISH_VALUES[fishType as keyof typeof FISH_VALUES] || 1
 
-        // 8. Commit result (Atomic)
+        // 9. Calculate XP with Bonus
+        const bonusXpMap: Record<string, number> = {
+            'JUNK': 0,
+            'COMMON': 1,
+            'UNCOMMON': 2,
+            'EPIC': 5,
+            'LEGENDARY': 10
+        }
+        const bonusXp = bonusXpMap[fishType] || 0
+
         const newMinedFish = Number(userData.minedFish ?? 0) + fishValue
-        const newXp = Number(userData.xp ?? 0) + 10
+        const newXp = Number(userData.xp ?? 0) + 10 + bonusXp
+
+        // 10. Check Level Up & Award Spin Tickets
+        const oldLevel = Math.floor(Number(userData.xp || 0) / 500) + 1
+        const newLevel = Math.floor(newXp / 500) + 1
 
         const updateData: any = {
             minedFish: newMinedFish.toString(),
@@ -115,10 +165,29 @@ export async function POST(req: NextRequest) {
             totalSuccessfulCasts: (Number(userData.totalSuccessfulCasts ?? 0) + 1).toString()
         }
 
+        // Award spin tickets for level ups (backend authoritative)
+        if (newLevel > oldLevel) {
+            const levelUps = newLevel - oldLevel
+            const currentTickets = Number(userData.spinTickets || 0)
+            updateData.spinTickets = (currentTickets + levelUps).toString()
+        }
+
         // Qualified Player Logic
         if (userData.isQualified !== "true") {
             updateData.isQualified = "true"
             await redis.incr('stats:qualified_players')
+        }
+
+        // Referral Activation (claim-based rewards only)
+        if (userData.referredBy && userData.referralActive !== 'true') {
+            const isPaid = userData.isPaid === 'true'
+            const minCasts = Number(updateData.totalSuccessfulCasts) >= 3
+
+            if (isPaid && minCasts) {
+                updateData.referralActive = 'true'
+                // Increment referrer's active count
+                await redis.hincrby(`user:${userData.referredBy}`, 'activeReferrals', 1)
+            }
         }
 
         await redis.hset(`user:${fid}`, updateData)
@@ -138,64 +207,8 @@ export async function POST(req: NextRequest) {
             success: true
         }))
 
-        // 🎁 REFERRAL REWARD SYSTEM
-        const referredBy = userData.referredBy
-        if (referredBy && referredBy !== fid) {
-            try {
-                const {
-                    activateReferralIfEligible,
-                    checkAndRewardMilestone
-                } = await import('@/lib/referral-helpers')
-                const { REFERRAL_CONFIG } = await import('@/lib/referral-config')
-
-                // Try to activate referral if eligible
-                const isActive = await activateReferralIfEligible(fid)
-
-                if (isActive) {
-                    const totalCasts = Number(updateData.totalSuccessfulCasts)
-                    const totalFish = newMinedFish
-
-                    // 1️⃣ First Activation Reward
-                    if (totalCasts === REFERRAL_CONFIG.ACTIVATION.MIN_CASTS) {
-                        const rewarded = await checkAndRewardMilestone(
-                            referredBy,
-                            fid,
-                            'first_active',
-                            REFERRAL_CONFIG.MILESTONES.FIRST_ACTIVE.reward
-                        )
-
-                        if (rewarded) {
-                            // Update active referral count
-                            const activeCount = Number(await redis.hget(`referral:${referredBy}`, 'activeReferred') || 0)
-                            await redis.hset(`referral:${referredBy}`, { activeReferred: String(activeCount + 1) })
-                        }
-                    }
-
-                    // 2️⃣ Cast Milestone (at exactly 10 casts)
-                    if (totalCasts === 10) {
-                        await checkAndRewardMilestone(
-                            referredBy,
-                            fid,
-                            'cast_10',
-                            REFERRAL_CONFIG.MILESTONES.CAST_10.reward
-                        )
-                    }
-
-                    // 3️⃣ Fish Milestone (at 50+ fish, one-time)
-                    if (totalFish >= 50) {
-                        await checkAndRewardMilestone(
-                            referredBy,
-                            fid,
-                            'fish_50',
-                            REFERRAL_CONFIG.MILESTONES.FISH_50.reward
-                        )
-                    }
-                }
-            } catch (refError) {
-                console.error('Referral reward error (non-blocking):', refError)
-                // Don't fail the mining operation if referral logic fails
-            }
-        }
+        // NOTE: Referral rewards moved to claim-based system (/api/referral/claim)
+        // Only activation flag is set here, rewards are claimed manually
 
         return NextResponse.json({
             status: 'SUCCESS',
@@ -204,9 +217,13 @@ export async function POST(req: NextRequest) {
             stats: {
                 minedFish: newMinedFish,
                 xp: newXp,
+                level: newLevel,
+                spinTickets: updateData.spinTickets || userData.spinTickets || '0',
                 currentIndex: cursor + 1,
                 hourlyCatches: hourlyCatches + 1,
-                difficultyMult
+                difficultyMult,
+                playerBoost,
+                finalRate: successRate
             }
         })
     } catch (error: any) {

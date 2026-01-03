@@ -21,6 +21,7 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
     const [result, setResult] = useState<{ rarity: string, val: number } | null>(null)
     const [rotation, setRotation] = useState<number>(0)
     const [showResultPopup, setShowResultPopup] = useState(false)
+    const [imageError, setImageError] = useState(false)
 
     useEffect(() => {
         if (result) {
@@ -100,23 +101,103 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
                     <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[35px] border-t-red-600"></div>
                 </div>
 
-                {/* ROTATING WHEEL IMAGE */}
+                {/* ROTATING WHEEL */}
                 <div
-                    className="w-full h-full rounded-full overflow-hidden"
+                    className="w-full h-full rounded-full overflow-hidden relative"
                     style={{
                         transform: `rotate(${rotation}deg)`,
                         transition: 'transform 5s cubic-bezier(0.25, 0.1, 0.25, 1)',
                         boxShadow: '0 0 20px rgba(0,0,0,0.5)'
                     }}
                 >
-                    <img
-                        src="/assets/image/spin.jpg"
-                        alt="Spin Wheel"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                            e.currentTarget.src = "/assets/image/icon.png" // Fallback
+                    {/* CSS Fallback Wheel */}
+                    <div
+                        className="absolute inset-0 w-full h-full"
+                        style={{
+                            background: `conic-gradient(
+                                from 0deg,
+                                #FDE047 0deg 45deg,
+                                #A855F7 45deg 90deg,
+                                #22C55E 90deg 135deg,
+                                #EF4444 135deg 180deg,
+                                #3B82F6 180deg 225deg,
+                                #F97316 225deg 270deg,
+                                #8B5CF6 270deg 315deg,
+                                #14B8A6 315deg 360deg
+                            )`,
+                            border: '8px solid rgba(255,255,255,0.2)'
                         }}
-                    />
+                    >
+                        {/* Inner circle */}
+                        <div className="absolute inset-[30%] rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-2xl flex items-center justify-center z-10 border-4 border-white/30">
+                            <div className="text-4xl font-black text-white drop-shadow-lg">🎡</div>
+                        </div>
+
+                        {/* Fish Images on 8 Segments */}
+                        <div className="absolute inset-0">
+                            {/* Segment 1 - Top (0deg) - LEGENDARY (10 fish) */}
+                            <div className="absolute top-[8%] left-1/2 -translate-x-1/2 w-14 h-14">
+                                <img src="/assets/image/legendary fish.jpg" alt="10" className="w-full h-full object-cover rounded-lg shadow-lg" />
+                            </div>
+
+                            {/* Segment 2 - Top-Right (45deg) - EPIC (5 fish) */}
+                            <div className="absolute top-[20%] right-[20%] w-12 h-12">
+                                <img src="/assets/image/fish rare.jpg" alt="5" className="w-full h-full object-cover rounded-lg shadow-lg" />
+                            </div>
+
+                            {/* Segment 3 - Right (90deg) - UNCOMMON (3 fish) */}
+                            <div className="absolute top-1/2 right-[8%] -translate-y-1/2 w-12 h-12">
+                                <img src="/assets/image/fish uncommon.jpg" alt="3" className="w-full h-full object-cover rounded-lg shadow-lg" />
+                            </div>
+
+                            {/* Segment 4 - Bottom-Right (135deg) - COMMON (1 fish) */}
+                            <div className="absolute bottom-[20%] right-[20%] w-10 h-10">
+                                <img src="/assets/image/fish cummon.jpg" alt="1" className="w-full h-full object-cover rounded-lg shadow-lg" />
+                            </div>
+
+                            {/* Segment 5 - Bottom (180deg) - LEGENDARY (10 fish) */}
+                            <div className="absolute bottom-[8%] left-1/2 -translate-x-1/2 w-14 h-14">
+                                <img src="/assets/image/legendary fish.jpg" alt="10" className="w-full h-full object-cover rounded-lg shadow-lg" />
+                            </div>
+
+                            {/* Segment 6 - Bottom-Left (225deg) - EPIC (5 fish) */}
+                            <div className="absolute bottom-[20%] left-[20%] w-12 h-12">
+                                <img src="/assets/image/fish rare.jpg" alt="5" className="w-full h-full object-cover rounded-lg shadow-lg" />
+                            </div>
+
+                            {/* Segment 7 - Left (270deg) - UNCOMMON (3 fish) */}
+                            <div className="absolute top-1/2 left-[8%] -translate-y-1/2 w-12 h-12">
+                                <img src="/assets/image/fish uncommon.jpg" alt="3" className="w-full h-full object-cover rounded-lg shadow-lg" />
+                            </div>
+
+                            {/* Segment 8 - Top-Left (315deg) - COMMON (1 fish) */}
+                            <div className="absolute top-[20%] left-[20%] w-10 h-10">
+                                <img src="/assets/image/fish cummon.jpg" alt="1" className="w-full h-full object-cover rounded-lg shadow-lg" />
+                            </div>
+                        </div>
+
+                        {/* Segments text (prize numbers) - deprecated, replaced by fish */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0">
+                            <div className="absolute top-[15%] text-xs font-black text-white drop-shadow-md">10</div>
+                            <div className="absolute right-[15%] text-xs font-black text-white drop-shadow-md">5</div>
+                            <div className="absolute bottom-[15%] text-xs font-black text-white drop-shadow-md">3</div>
+                            <div className="absolute left-[15%] text-xs font-black text-white drop-shadow-md">1</div>
+                        </div>
+                    </div>
+
+                    {/* Image overlay (try to load) */}
+                    {!imageError && (
+                        <img
+                            src="/assets/image/spin.jpg"
+                            alt="Spin Wheel"
+                            className="absolute inset-0 w-full h-full object-cover z-10"
+                            onError={() => {
+                                console.log("Spin wheel image failed to load, using CSS fallback")
+                                setImageError(true)
+                            }}
+                            onLoad={() => setImageError(false)}
+                        />
+                    )}
                 </div>
             </div>
 
