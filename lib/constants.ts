@@ -7,9 +7,9 @@ export const BOAT_CONFIG: Record<BoatTier, {
   catchingRate: number
   fishPerHour: number
 }> = {
-  SMALL: { price: 10, catchingRate: 0.50, fishPerHour: 10 },
-  MEDIUM: { price: 20, catchingRate: 0.60, fishPerHour: 25 },
-  LARGE: { price: 50, catchingRate: 0.75, fishPerHour: 60 },
+  SMALL: { price: 10, catchingRate: 0.75, fishPerHour: 10 },   // Was 0.50, now 75% base
+  MEDIUM: { price: 20, catchingRate: 0.85, fishPerHour: 25 },  // Was 0.60, now 85% base
+  LARGE: { price: 50, catchingRate: 0.95, fishPerHour: 60 },   // Was 0.75, now 95% base
 };
 
 export const BOAT_TIER_MAP: Record<number, BoatTier> = {

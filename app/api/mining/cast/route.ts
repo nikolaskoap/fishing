@@ -73,12 +73,12 @@ export async function POST(req: NextRequest) {
         let playerBoost = 1.0
 
         if (totalFish < 50) {
-            // Beginner: +50% success rate
-            playerBoost = 1.5
+            // Beginner: +100% success rate (was 50%, now 100%)
+            playerBoost = 2.0
         } else if (totalFish < 200) {
-            // Intermediate: gradual decrease 1.5x → 1.0x
+            // Intermediate: gradual decrease 2.0x → 1.0x
             const progress = (totalFish - 50) / 150
-            playerBoost = 1.5 - (progress * 0.5)
+            playerBoost = 2.0 - (progress * 1.0)
         } else if (totalFish < 500) {
             // Advanced: normal difficulty
             playerBoost = 1.0

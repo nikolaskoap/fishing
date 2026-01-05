@@ -24,14 +24,16 @@ export async function POST(req: NextRequest) {
 
         const userKey = `user:${fid}`
 
-        // 3. Ticket Burn (Atomic)
-        const tickets = await redis.hincrby(userKey, 'spinTickets', -1)
-        if (tickets < 0) {
-            await redis.hincrby(userKey, 'spinTickets', 1) // Refund
+        // 3. Check Tickets First (Fix: Check BEFORE decrement)
+        const currentTickets = Number(userData.spinTickets || 0)
+        if (currentTickets <= 0) {
             return NextResponse.json({ error: 'NO_TICKETS' }, { status: 400 })
         }
 
-        // 4. Weighted RNG (99% 1 Fish Rule)
+        // 4. Ticket Burn (Atomic - only after validation)
+        const tickets = await redis.hincrby(userKey, 'spinTickets', -1)
+
+        // 5. Weighted RNG (99% 1 Fish Rule)
         const roll = crypto.randomInt(0, 10000) // 0 - 9999
         let prize = 0
         let rarity = 'COMMON'
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
             rarity = 'LEGENDARY'
         }
 
-        // 5. Update Redis (Fish Balance)
+        // 6. Update Redis (Fish Balance)
         if (prize > 0) {
             await redis.hincrbyfloat(userKey, 'minedFish', prize)
         }
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
         const spinId = crypto.randomUUID()
         const now = Date.now()
 
-        // 6. Audit Log
+        // 7. Audit Log
         await redis.lpush(`audit:spin:${fid}`, JSON.stringify({
             id: spinId,
             rarity,
