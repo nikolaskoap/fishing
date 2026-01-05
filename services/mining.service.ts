@@ -33,10 +33,18 @@ export const miningService = {
     },
 
     async saveUser(data: any) {
+        // Include referrerFid if available in localStorage
+        const referrerFid = typeof window !== 'undefined' ? localStorage.getItem('referrerFid') : null
+        const payload = { ...data }
+
+        if (referrerFid && !payload.referrerFid) {
+            payload.referrerFid = referrerFid
+        }
+
         const res = await fetch('/api/user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(payload)
         });
         return res.json();
     },
@@ -68,11 +76,14 @@ export const miningService = {
         return res.json();
     },
 
-    async cast(fid: string) {
+    async cast(fid: string, wallet?: string) {
         const res = await fetch('/api/mining/cast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: fid }) // The route still expects 'userId' but it will be the FID
+            body: JSON.stringify({
+                userId: fid,
+                wallet: wallet || '0x'
+            })
         });
         return res.json();
     },
