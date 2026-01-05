@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react'
 interface SpinWheelProps {
     onWin: (amount: number) => void
     tickets: number
+    userId?: string // Passed from parent
+    wallet?: string // Passed from parent
 }
 
 // Map Rarity to Image Assets (Verified paths based on directory search)
@@ -16,7 +18,7 @@ const PRIZE_IMAGES: Record<string, string> = {
     'TRY_AGAIN': '/assets/image/icon.png'
 }
 
-export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
+export function SpinWheel({ onWin, tickets, userId: userIdProp, wallet: walletProp }: SpinWheelProps) {
     const [isSpinning, setIsSpinning] = useState(false)
     const [result, setResult] = useState<{ rarity: string, val: number } | null>(null)
     const [rotation, setRotation] = useState<number>(0)
@@ -39,8 +41,15 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
         setShowResultPopup(false)
 
         try {
-            const userId = (window as any).userId || localStorage.getItem('userId')
-            const wallet = (window as any).walletAddress || localStorage.getItem('walletAddress')
+            // Use props if available, fallback to localStorage/window
+            const userId = userIdProp || (window as any).userId || localStorage.getItem('userId')
+            const wallet = walletProp || (window as any).walletAddress || localStorage.getItem('walletAddress')
+
+            if (!userId) {
+                alert('User session not found. Please refresh the page.')
+                setIsSpinning(false)
+                return
+            }
 
             const res = await fetch('/api/spin/execute', {
                 method: 'POST',

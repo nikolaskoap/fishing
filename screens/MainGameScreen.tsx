@@ -688,6 +688,8 @@ export default function MainGameScreen() {
         canSpinDaily={canSpinDaily}
         nextDailySpin={lastDailySpin + (24 * 3600 * 1000)}
         onSpinSuccess={handleSpinWin}
+        userId={userId || fid?.toString()}
+        wallet={address}
       />
 
       <StatsMenu

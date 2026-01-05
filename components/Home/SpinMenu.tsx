@@ -4,14 +4,16 @@ import { SpinWheel } from "./SpinWheel";
 
 interface SpinMenuProps {
     tickets: number;
-    canSpinDaily?: boolean; // New prop
-    nextDailySpin?: number; // New prop for countdown (optional)
+    canSpinDaily?: boolean;
+    nextDailySpin?: number;
     onSpinSuccess: (amount: number) => void;
     isOpen: boolean;
     onClose: () => void;
+    userId?: string; // Pass from parent
+    wallet?: string; // Pass from parent
 }
 
-export function SpinMenu({ tickets, onSpinSuccess, isOpen, onClose, canSpinDaily, nextDailySpin }: SpinMenuProps) {
+export function SpinMenu({ tickets, onSpinSuccess, isOpen, onClose, canSpinDaily, nextDailySpin, userId, wallet }: SpinMenuProps) {
     if (!isOpen) return null;
 
     return (
@@ -39,7 +41,9 @@ export function SpinMenu({ tickets, onSpinSuccess, isOpen, onClose, canSpinDaily
 
                 <SpinWheel
                     onWin={onSpinSuccess}
-                    tickets={tickets} // Pass to wheel to disable button
+                    tickets={tickets}
+                    userId={userId}
+                    wallet={wallet}
                 />
 
                 <div className="text-[10px] text-center mt-6 space-y-1">
