@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 
 interface SpinWheelProps {
-    onWin: (amount: number) => void
+    onWin: (amount: number, newTickets?: number) => void
     tickets: number
     userId?: string // Passed from parent
     wallet?: string // Passed from parent
@@ -64,7 +64,7 @@ export function SpinWheel({ onWin, tickets, userId: userIdProp, wallet: walletPr
                 return
             }
 
-            const { rarity, prize } = data
+            const { rarity, prize, newTickets } = data
 
             // Visual Spin: Add extra spins (1800-2160 deg) + random variance
             const newRotation = rotation + 1800 + Math.random() * 360
@@ -74,7 +74,7 @@ export function SpinWheel({ onWin, tickets, userId: userIdProp, wallet: walletPr
             setTimeout(() => {
                 setResult({ rarity, val: prize })
                 setIsSpinning(false)
-                onWin(prize) // This updates the parent balance
+                onWin(prize, newTickets) // Pass newTickets to parent
             }, 5000)
 
         } catch (e) {

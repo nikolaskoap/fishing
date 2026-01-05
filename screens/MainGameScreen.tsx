@@ -334,13 +334,20 @@ export default function MainGameScreen() {
     // If user has 100+ referrals, maybe give extra? for now sticking to basic request
   }
 
-  const handleSpinWin = (amount: number) => {
+  const handleSpinWin = (amount: number, newTicketsFromBackend?: number) => {
     setMinedFish(prev => prev + amount)
-    const canSpinDailyNow = (Date.now() - lastDailySpin) > (24 * 60 * 60 * 1000)
-    if (canSpinDailyNow) {
-      setLastDailySpin(Date.now())
+
+    // Sync tickets from backend response if provided
+    if (newTicketsFromBackend !== undefined) {
+      setSpinTickets(newTicketsFromBackend)
     } else {
-      setSpinTickets(prev => Math.max(0, prev - 1))
+      // Fallback: old logic (but this shouldn't happen anymore)
+      const canSpinDailyNow = (Date.now() - lastDailySpin) > (24 * 60 * 60 * 1000)
+      if (canSpinDailyNow) {
+        setLastDailySpin(Date.now())
+      } else {
+        setSpinTickets(prev => Math.max(0, prev - 1))
+      }
     }
   }
 
