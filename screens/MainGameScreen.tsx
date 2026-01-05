@@ -125,9 +125,15 @@ export default function MainGameScreen() {
         setUserId(authData.userId)
         setSocialVerified(authData.socialVerified)
 
-        // Persist userId for child components (SpinWheel, etc)
+        // Persist userId and wallet for child components (SpinWheel, etc)
         localStorage.setItem('userId', authData.userId)
           ; (window as any).userId = authData.userId
+
+        // Persist wallet address for API calls
+        if (address) {
+          localStorage.setItem('walletAddress', address)
+            ; (window as any).walletAddress = address
+        }
 
         // Check for referral and send to backend for new users
         const referrerFid = localStorage.getItem('referrerFid')

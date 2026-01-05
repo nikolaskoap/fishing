@@ -40,11 +40,12 @@ export function SpinWheel({ onWin, tickets }: SpinWheelProps) {
 
         try {
             const userId = (window as any).userId || localStorage.getItem('userId')
+            const wallet = (window as any).walletAddress || localStorage.getItem('walletAddress')
 
             const res = await fetch('/api/spin/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fid: userId })
+                body: JSON.stringify({ fid: userId, wallet })
             })
             const data = await res.json()
 

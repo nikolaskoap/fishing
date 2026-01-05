@@ -54,9 +54,9 @@ export default function MiningController({
     useEffect(() => {
         if (!isActive) return
 
-        // Base interval for casting (e.g., every 5-10 seconds based on boat/rod)
-        // Rate limiting is also enforced on server (4s)
-        const baseInterval = 8000
+        // Base interval for casting (3.5s for frequent popups)
+        // Server enforces 4s minimum, but client attempts faster for better UX
+        const baseInterval = 3500
         const interval = baseInterval / speedMultiplier
 
         const timeout = setTimeout(() => {
